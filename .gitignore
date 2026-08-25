@@ -1,0 +1,12 @@
+# build artifacts
+build/
+webserv
+*.o
+*.a
+
+# editor / OS noise
+.vscode/
+.DS_Store
+*.swp
+
+FolderTree-Division
