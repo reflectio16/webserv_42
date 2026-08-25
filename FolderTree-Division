@@ -1,0 +1,36 @@
+webserv/
+├── Makefile
+├── main.cpp                     ← entry point (Francois - Merve)
+├── src/
+│   ├── core/                    ── Merve: the engine
+│   │   ├── Server.hpp
+│   │   └── Server.cpp           (owns sockets + connections, runs the poll loop)
+│   ├── socket/                  ── Merve
+│   │   ├── ListeningSocket.hpp
+│   │   └── ListeningSocket.cpp  (makeListeningSocket lives here)
+│   ├── connection/             ── Merve
+│   │   ├── Connection.hpp       ← the file you just specced
+│   │   └── Connection.cpp       (compact, resetForNextRequest, ...)
+│   ├── cgi/                     ── Merve(pipes, fork) - Francois(http part of it)
+│   │   ├── CgiProcess.hpp
+│   │   └── CgiProcess.cpp       (fork/exec, pipe wiring)
+│   ├── http/                    ── Francois
+│   │   ├── HttpRequest.hpp
+│   │   ├── RequestParser.hpp
+│   │   ├── RequestParser.cpp
+│   │   ├── ResponseBuilder.hpp
+│   │   └── ResponseBuilder.cpp
+│   └── config/                  ── Francois
+│       ├── Config.hpp
+│       ├── Config.cpp
+│       └── ServerBlock.hpp
+├── config/
+│   └── default.conf             (a test config to parse)
+                                ── Francois - Merve
+└── www/
+    ├── index.html               (a static file to serve)
+    └── cgi-bin/
+        └── hello.py             (a CGI script to test with)
+                                ── Francois - Merve
+
+                                
