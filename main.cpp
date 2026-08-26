@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/25 17:06:44 by meelma            #+#    #+#             */
-/*   Updated: 2026/08/25 18:40:20 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/08/26 15:59:08 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,27 @@ int main(int argc, char **argv) {
 		std::cerr << "see usage" << std::endl;
 		return (1);
 	}
-	Config config(argv[1]);
+	try
+	{
+		Config config(argv[1]);
+		
+		std::vector<Endpoint>					endpoints = config.getEndpoints();
+		std::vector<Endpoint>::const_iterator	it;
+
+		for (it = endpoints.begin(); it != endpoints.end(); ++it)
+		{
+			std::cout 	<< "host: "
+						<< it->host
+						<< std::endl
+						<< "port: "
+						<< it->port
+						<< std::endl;
+		}
+	}
+	catch(const std::exception& e)
+	{
+		std::cerr << e.what() << '\n';
+	}
+	
     return 0;
 }

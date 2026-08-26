@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/25 18:36:27 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/08/26 15:56:15 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,14 +99,24 @@ void	Config::parseListen(ServerBlock &server, const std::vector<std::string> &to
 	std::string host = value.substr(0, colonPos);
 	std::string portString = value.substr(colonPos + 1);
 	
+	if (host.empty())
+		throw std::runtime_error("Listen host cannot be empty");
+
+	if (portString.empty())
+		throw std::runtime_error("Listen port cannot be empty");
+	
 	if (tokens[i + 2] != ";")
 		throw std::runtime_error("Expected ';' after listen directive");
 		
-	std::istringstream	stream(portString);
+	std::istringstream	stream(portString); 
 	int					port;
+	char				extra; //(extra is usefull in the case there would be something after the port. for example 8080banana. In this case with stream >> extra, banana would go directly in extra)
 
-	if (!(stream >> port))
+	if (!(stream >> port) || (stream >> extra))
 		throw std::runtime_error("Invalid port");
+	
+	if (port < 1 || port > 65635)
+		throw std::runtime_error("Invalid port: out of range");
 	
 	server.listenAddr.host = host;
 	server.listenAddr.port = port;
@@ -119,6 +129,9 @@ void	Config::parseServerName(ServerBlock &server, const std::vector<std::string>
 	if (i + 2 >= tokens.size())
 		throw std::runtime_error("Incomplete server name directive");
 	
+	if (tokens[i + 1] == ";")
+		throw std::runtime_error("Server name directive cannot be empty");
+		
 	if (tokens[i + 2] != ";")
 		throw std::runtime_error("Expected ';' after server name directive");
 	
@@ -131,6 +144,12 @@ void	Config::parseRoot(ServerBlock &server, const std::vector<std::string> &toke
 {
 	if (i + 2 >= tokens.size())
 		throw std::runtime_error("Incomplete root directive");
+
+	if (tokens[i + 1] == ";")
+		throw std::runtime_error("Root directive cannot be empty");
+
+	if (tokens[i + 1][0] != '/')
+		throw std::runtime_error("Root must be an absolute path");
 
 	if (tokens[i + 2] != ";")
 		throw std::runtime_error("Expected ';' after root directive");
@@ -156,35 +175,49 @@ void	Config::parse(const std::vector<std::string> &tokens)
 		++i;
 		
 		ServerBlock	server;
+		bool		hasListen = false;
+		bool		hasServerName = false;
+		bool		hasRoot = false;
 		
 		while (i < tokens.size() && tokens[i] != "}")
 		{			
 			if (tokens[i] == "listen")
+			{
+				if (hasListen)
+					throw std::runtime_error("Duplicate listen directive");
 				parseListen(server, tokens, i);
+				hasListen = true;
+			}
 			else if (tokens[i] == "server_name")
+			{
+				if (hasServerName)
+					throw std::runtime_error("Duplicate server name directive");
 				parseServerName(server, tokens, i);
+				hasServerName = true;
+			}
 			else if (tokens[i] == "root")
+			{
+				if (hasRoot)
+					throw std::runtime_error("Duplicate root directive");
 				parseRoot(server, tokens, i);
+				hasRoot = true;
+			}
 			else
-				++i;
+				throw std::runtime_error("Unknown directive: " + tokens[i]);
 		}
 		
 		if (i >= tokens.size())
 			throw std::runtime_error("Unclosed server block");
 
+		if (!hasListen)
+			throw std::runtime_error("Missing listen directive");
+		
+		if (!hasRoot)
+			throw std::runtime_error("Missing root directive");
+		
 		++i;
 		
 		_servers.push_back(server);
-	}
-
-	std::cout << "Parsed servers: " << _servers.size() << std::endl;
-	for (size_t i = 0; i != _servers.size(); ++i)
-	{
-		std::cout << "server number: " << i + 1 << std::endl;
-		std::cout << "server host: " << _servers[i].listenAddr.host << std::endl;
-		std::cout << "server port: " << _servers[i].listenAddr.port << std::endl;
-		std::cout << "server_name: " << _servers[i].serverName << std::endl;
-		std::cout << "server root: " << _servers[i].root << std::endl;
 	}
 }
 
