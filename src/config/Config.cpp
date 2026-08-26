@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/26 15:56:15 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/08/26 16:34:02 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -115,7 +115,7 @@ void	Config::parseListen(ServerBlock &server, const std::vector<std::string> &to
 	if (!(stream >> port) || (stream >> extra))
 		throw std::runtime_error("Invalid port");
 	
-	if (port < 1 || port > 65635)
+	if (port < 1 || port > 65535)
 		throw std::runtime_error("Invalid port: out of range");
 	
 	server.listenAddr.host = host;
