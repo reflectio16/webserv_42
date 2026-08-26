@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/25 17:13:30 by meelma            #+#    #+#             */
-/*   Updated: 2026/08/25 17:26:10 by meelma           ###   ########.fr       */
+/*   Updated: 2026/08/26 17:40:09 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,4 +71,4 @@ struct Connection {
     void        resetForNextRequest();
 };
 
-#endif // CONNECTION_HPP
+#endif
