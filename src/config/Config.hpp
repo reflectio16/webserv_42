@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Config.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
+/*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:21 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/26 19:26:52 by meelma           ###   ########.fr       */
+/*   Updated: 2026/08/27 15:51:45 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,21 +15,7 @@
 
 #include <string>
 #include <vector>
-
-struct Endpoint
-{
-	std::string	host;
-	int			port;
-	
-	Endpoint() : host(""), port(0) {}
-};
-
-struct ServerBlock
-{
-	Endpoint	listenAddr;
-	std::string	serverName;
-	std::string	root;
-};
+#include "ServerBlock.hpp"
 
 class Config
 {

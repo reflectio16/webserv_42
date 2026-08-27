@@ -6,11 +6,12 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/26 16:34:02 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/08/27 14:49:55 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Config.hpp"
+#include "ServerBlock.hpp"
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
