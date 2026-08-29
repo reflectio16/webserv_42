@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:21 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/27 15:51:45 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/08/29 15:50:58 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,8 @@ class Config
 		void						parseListen(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i);
 		void						parseServerName(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i);
 		void						parseRoot(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i);
+		void						parseLocation(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i);
+		void						parseMethod(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
 	public:
 		Config();
 		Config(const std::string &filename);

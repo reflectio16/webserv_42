@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/27 14:49:55 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/08/29 17:31:05 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -160,6 +160,59 @@ void	Config::parseRoot(ServerBlock &server, const std::vector<std::string> &toke
 	i += 3;
 }
 
+void	Config::parseMethod(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i)
+{
+	++i;
+	
+	if (i >= tokens.size() || tokens[i] == ";")
+		throw std::runtime_error("Method directive cannot be empty");
+
+	while (i < tokens.size() && tokens[i] != ";")
+	{
+		if (tokens[i] != "GET" && tokens[i] != "POST" && tokens[i] != "DELETE")
+			throw std::runtime_error("Invalid HTTP method: " + tokens[i]);
+		location.method.push_back(tokens[i]);
+		++i;
+	}
+	
+	if (i > tokens.size())
+		throw std::runtime_error("Expected ';' after method directive");
+
+	++i;
+}
+
+void	Config::parseLocation(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i)
+{
+	if (i + 2 >= tokens.size())
+		throw std::runtime_error("Incomplete location path");
+
+	if (tokens[i + 1].empty() || tokens[i + 1][0] != '/')
+		throw std::runtime_error("Invalid location path");
+
+	if (tokens[i + 2] != "{")
+		throw std::runtime_error("Expected '{' after location path");
+	
+		
+	LocationBlock	location;
+	location.path = tokens[i + 1];
+	
+	i += 3;
+
+	while (i < tokens.size() && tokens[i] != "}")
+	{
+		if (tokens[i] == "methods")
+			parseMethod(location, tokens, i);
+		else
+			++i;
+	}
+	
+	if (i >= tokens.size())
+		throw std::runtime_error("Unclosed location block");
+	
+	++i;
+	
+	server.locations.push_back(location);
+}
 
 void	Config::parse(const std::vector<std::string> &tokens)
 {
@@ -202,6 +255,10 @@ void	Config::parse(const std::vector<std::string> &tokens)
 					throw std::runtime_error("Duplicate root directive");
 				parseRoot(server, tokens, i);
 				hasRoot = true;
+			}
+			else if (tokens[i] == "location")
+			{
+				parseLocation(server, tokens, i);
 			}
 			else
 				throw std::runtime_error("Unknown directive: " + tokens[i]);
