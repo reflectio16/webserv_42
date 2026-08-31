@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/31 17:04:09 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/08/31 17:56:18 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -160,6 +160,36 @@ void	Config::parseRoot(ServerBlock &server, const std::vector<std::string> &toke
 	i += 3;
 }
 
+void	Config::parseClientMaxBodySize(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i)
+{
+	if (i + 2 >= tokens.size())
+		throw std::runtime_error("Incomplete client_max_body_size directive");
+
+	if (tokens[i + 1] == ";")
+		throw std::runtime_error("client_max_body_size cannot be empty");
+	
+	if (tokens[i + 2] != ";")
+		throw std::runtime_error("Expected ';' after client max body size directive");
+
+	const std::string &value = tokens[i + 1];
+
+	for (std::string::size_type j = 0; j < value.size(); ++j)
+	{
+		if (!isdigit(static_cast<unsigned char>(value[j])))
+			throw std::runtime_error("Invalid client_max_body_size");
+	}
+
+	std::istringstream	stream(tokens[i + 1]);
+	size_t				bodySize;
+
+	if (!(stream >> bodySize))
+		throw std::runtime_error("Invalid client_max_body_size");
+		
+	server.client_max_body_size = bodySize;
+
+	i += 3;
+}
+
 void	Config::parseMethod(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i)
 {
 	++i;
@@ -295,6 +325,7 @@ void	Config::parse(const std::vector<std::string> &tokens)
 		bool		hasListen = false;
 		bool		hasServerName = false;
 		bool		hasRoot = false;
+		bool		hasClientMaxBodySize = false;
 		
 		while (i < tokens.size() && tokens[i] != "}")
 		{			
@@ -318,6 +349,13 @@ void	Config::parse(const std::vector<std::string> &tokens)
 					throw std::runtime_error("Duplicate root directive");
 				parseRoot(server, tokens, i);
 				hasRoot = true;
+			}
+			else if (tokens[i] == "client_max_body_size")
+			{
+				if (hasClientMaxBodySize)
+					throw std::runtime_error("Duplicate client_max_body_size directive");
+				parseClientMaxBodySize(server, tokens, i);
+				hasClientMaxBodySize = true;
 			}
 			else if (tokens[i] == "location")
 			{

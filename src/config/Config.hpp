@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:21 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/31 16:45:49 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/08/31 17:18:28 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,7 @@ class Config
 		void						parseLocationRoot(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
 		void						parseIndex(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
 		void						parseAutoIndex(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
+		void						parseClientMaxBodySize(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i);
 	public:
 		Config();
 		Config(const std::string &filename);
