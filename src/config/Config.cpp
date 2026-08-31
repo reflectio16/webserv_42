@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/31 17:56:18 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/08/31 18:05:50 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -185,7 +185,7 @@ void	Config::parseClientMaxBodySize(ServerBlock &server, const std::vector<std::
 	if (!(stream >> bodySize))
 		throw std::runtime_error("Invalid client_max_body_size");
 		
-	server.client_max_body_size = bodySize;
+	server.clientMaxBodySize = bodySize;
 
 	i += 3;
 }
