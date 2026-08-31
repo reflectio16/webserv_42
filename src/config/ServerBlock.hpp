@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/27 14:50:26 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/31 18:06:02 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/08/31 19:09:39 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 
 #include "LocationBlock.hpp"
 #include <vector>
+#include <map>
 
 struct Endpoint
 {
@@ -30,7 +31,7 @@ struct ServerBlock
 	std::string					serverName;
 	std::string					root;
 	size_t						clientMaxBodySize;
-	std::map<int, std::string>	errorPage;
+	std::map<int, std::string>	errorPages;
 	std::vector<LocationBlock>	locations;
 
 	ServerBlock()

@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/31 18:05:50 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/08/31 19:14:44 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -190,6 +190,55 @@ void	Config::parseClientMaxBodySize(ServerBlock &server, const std::vector<std::
 	i += 3;
 }
 
+void	Config::parseErrorPage(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i)
+{
+	if (i + 3 >= tokens.size())
+		throw std::runtime_error("Incomplete Error Page directive");
+	
+	if (tokens[i + 1] == ";" || tokens[i + 2] == ";")
+		throw std::runtime_error("Error page directive cannot be empty");
+	
+	if (tokens[i + 3] != ";")
+		throw std::runtime_error("Expected ';' after error page directive");
+	
+	const std::string &value = tokens[i + 1];
+		
+	for (std::string::size_type j = 0; j < value.size(); ++j)
+	{
+		if (!isdigit(static_cast<unsigned char>(value[j])))
+			throw std::runtime_error("Invalid error page status code");
+	}
+		
+	std::istringstream	stream(value);
+	int					code;
+
+	if (!(stream >> code))
+		throw std::runtime_error("Invalid error page status code");
+		
+	if (code < 400 || code > 599)
+		throw std::runtime_error("Error page status code must be between 400 and 599");
+
+	if (tokens[i + 2][0] != '/')
+		throw std::runtime_error("Error page path must start with '/'");
+
+	if (server.errorPages.find(code) != server.errorPages.end())
+		throw std::runtime_error("Duplicate error_page status code");
+		
+	server.errorPages[code] = tokens[i + 2];
+
+	i += 4;
+
+	for (std::map<int, std::string>::const_iterator it = server.errorPages.begin();
+     it != server.errorPages.end();
+     ++it)
+	{
+		std::cout << it->first
+				<< " -> "
+				<< it->second
+				<< std::endl;
+	}
+}
+
 void	Config::parseMethod(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i)
 {
 	++i;
@@ -356,6 +405,10 @@ void	Config::parse(const std::vector<std::string> &tokens)
 					throw std::runtime_error("Duplicate client_max_body_size directive");
 				parseClientMaxBodySize(server, tokens, i);
 				hasClientMaxBodySize = true;
+			}
+			else if (tokens[i] == "error_page")
+			{
+				parseErrorPage(server, tokens, i);
 			}
 			else if (tokens[i] == "location")
 			{
