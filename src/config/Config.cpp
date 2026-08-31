@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/31 15:42:49 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/08/31 17:04:09 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -216,6 +216,28 @@ void	Config::parseIndex(LocationBlock &location, const std::vector<std::string> 
 	i += 3;
 }
 
+void	Config::parseAutoIndex(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i)
+{
+	if (i + 2 >= tokens.size())
+		throw std::runtime_error("Incomplete autoindex directive");
+
+	if (tokens[i + 1] == ";")
+		throw std::runtime_error("Autoindex directive cannot be empty");
+	
+	if (tokens[i + 2] != ";")
+		throw std::runtime_error("Expected ';' after autoindex directive");
+	
+	if (tokens[i + 1] == "on")
+		location.autoindex = true;
+	else if (tokens[i + 1] == "off")
+		location.autoindex = false;
+	else
+		throw std::runtime_error("Autoindex must be 'on' or 'off'");
+
+	i += 3;
+}
+
+
 void	Config::parseLocation(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i)
 {
 	if (i + 2 >= tokens.size())
@@ -241,6 +263,8 @@ void	Config::parseLocation(ServerBlock &server, const std::vector<std::string> &
 			parseLocationRoot(location, tokens, i);
 		else if (tokens[i] == "index")
 			parseIndex(location, tokens, i);
+		else if (tokens[i] == "autoindex")
+			parseAutoIndex(location, tokens, i);
 		else
 			++i;
 	}
