@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/29 17:31:05 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/08/31 15:42:49 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -181,6 +181,41 @@ void	Config::parseMethod(LocationBlock &location, const std::vector<std::string>
 	++i;
 }
 
+void	Config::parseLocationRoot(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i)
+{
+	if (i + 2 >= tokens.size())
+		throw std::runtime_error("Incomplete root directive");
+
+	if (tokens[i + 1] == ";")
+		throw std::runtime_error("Root directive cannot be empty");
+
+	if (tokens[i + 1][0] != '/')
+		throw std::runtime_error("Root must be an absolute path");
+
+	if (tokens[i + 2] != ";")
+		throw std::runtime_error("Expected ';' after root directive");
+	
+	location.root = tokens[i + 1];
+
+	i += 3;
+}
+
+void	Config::parseIndex(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i)
+{
+	if (i + 2 >= tokens.size())
+		throw std::runtime_error("Incomplete index directive");
+
+	if (tokens[i + 1] == ";")
+		throw std::runtime_error("Index directive cannot be empty");
+		
+	if (tokens[i + 2] != ";")
+		throw std::runtime_error("Expected ';' after index directive");
+
+	location.index = tokens[i + 1];
+
+	i += 3;
+}
+
 void	Config::parseLocation(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i)
 {
 	if (i + 2 >= tokens.size())
@@ -202,6 +237,10 @@ void	Config::parseLocation(ServerBlock &server, const std::vector<std::string> &
 	{
 		if (tokens[i] == "methods")
 			parseMethod(location, tokens, i);
+		else if (tokens[i] == "root")
+			parseLocationRoot(location, tokens, i);
+		else if (tokens[i] == "index")
+			parseIndex(location, tokens, i);
 		else
 			++i;
 	}
