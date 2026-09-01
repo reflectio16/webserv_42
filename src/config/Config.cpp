@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/31 19:14:44 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/01 15:17:11 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -227,16 +227,6 @@ void	Config::parseErrorPage(ServerBlock &server, const std::vector<std::string> 
 	server.errorPages[code] = tokens[i + 2];
 
 	i += 4;
-
-	for (std::map<int, std::string>::const_iterator it = server.errorPages.begin();
-     it != server.errorPages.end();
-     ++it)
-	{
-		std::cout << it->first
-				<< " -> "
-				<< it->second
-				<< std::endl;
-	}
 }
 
 void	Config::parseMethod(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i)
@@ -316,6 +306,24 @@ void	Config::parseAutoIndex(LocationBlock &location, const std::vector<std::stri
 	i += 3;
 }
 
+void	Config::parseUploadDir(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i)
+{
+	if (i + 2 >= tokens.size())
+		throw std::runtime_error("Incomplete upload_dir directive");
+		
+	if (tokens[i + 1] == ";")
+		throw std::runtime_error("upload_dir directive cannot be empty");
+
+	if (tokens[i + 1][0] != '/')
+		throw std::runtime_error("upload_dir directive path must start with '/'");
+
+	if (tokens[i + 2] != ";")
+		throw std::runtime_error("Expected ';' after upload_dir directive");
+
+	location.uploadDir = tokens[i + 1];
+
+	i += 3;
+}
 
 void	Config::parseLocation(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i)
 {
@@ -334,6 +342,8 @@ void	Config::parseLocation(ServerBlock &server, const std::vector<std::string> &
 	
 	i += 3;
 
+	bool	hasUploadDir = false;
+	
 	while (i < tokens.size() && tokens[i] != "}")
 	{
 		if (tokens[i] == "methods")
@@ -344,6 +354,13 @@ void	Config::parseLocation(ServerBlock &server, const std::vector<std::string> &
 			parseIndex(location, tokens, i);
 		else if (tokens[i] == "autoindex")
 			parseAutoIndex(location, tokens, i);
+		else if (tokens[i] == "upload_dir")
+		{
+			if (hasUploadDir)
+				throw std::runtime_error("Duplicate upload_dir directive");
+			parseUploadDir(location, tokens, i);
+			hasUploadDir = true;
+		}
 		else
 			++i;
 	}
