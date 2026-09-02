@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:21 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/02 14:41:19 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/02 17:26:22 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,13 +34,17 @@ class Config
 		
 		void						parseLocation(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i);
 		
-		void						parseMethod(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
+		void						parseMethods(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
 		void						parseLocationRoot(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
 		void						parseIndex(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
 		void						parseAutoIndex(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
 		void						parseUploadDir(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
 		void						parseRedirect(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
 		void						parseCgiHandler(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
+
+		void						validate() const;
+		void						validateServer(const ServerBlock &server) const;
+		void						validateLocation(const LocationBlock &location) const;
 	public:
 		Config();
 		Config(const std::string &filename);

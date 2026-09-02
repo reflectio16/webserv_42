@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/27 15:00:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/27 15:19:35 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/02 15:37:44 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,7 @@
 struct LocationBlock
 {
 	std::string							path;
-	std::vector<std::string>			method;
+	std::vector<std::string>			methods;
 	
 	std::string							root;
 	std::string 						index;

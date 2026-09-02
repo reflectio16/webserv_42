@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/26 19:25:34 by meelma            #+#    #+#             */
-/*   Updated: 2026/08/29 15:42:22 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/02 18:23:59 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,7 @@ int main(int argc, char** argv) {
     }
     catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
+		return 1;
     }
     return 0;
 }

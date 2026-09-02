@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/02 15:10:13 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/02 18:04:20 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,7 @@ Config::Config(const std::string &filename)
 	std::vector<std::string> tokens = tokenize(content);
 
 	parse(tokens);
+	validate();
 }
 
 std::string	Config::readFile(const std::string &filename) const
@@ -229,7 +230,7 @@ void	Config::parseErrorPage(ServerBlock &server, const std::vector<std::string> 
 	i += 4;
 }
 
-void	Config::parseMethod(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i)
+void	Config::parseMethods(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i)
 {
 	++i;
 	
@@ -240,11 +241,19 @@ void	Config::parseMethod(LocationBlock &location, const std::vector<std::string>
 	{
 		if (tokens[i] != "GET" && tokens[i] != "POST" && tokens[i] != "DELETE")
 			throw std::runtime_error("Invalid HTTP method: " + tokens[i]);
-		location.method.push_back(tokens[i]);
+			
+		for (std::vector<std::string>::const_iterator it = location.methods.begin(); it != location.methods.end(); ++it)
+		{
+			if (*it == tokens[i])
+				throw std::runtime_error("Duplicate HTTP method: " + tokens[i]);
+		}
+		
+		location.methods.push_back(tokens[i]);
+		
 		++i;
 	}
 	
-	if (i > tokens.size())
+	if (i >= tokens.size())
 		throw std::runtime_error("Expected ';' after method directive");
 
 	++i;
@@ -406,56 +415,86 @@ void	Config::parseLocation(ServerBlock &server, const std::vector<std::string> &
 	LocationBlock	location;
 	location.path = tokens[i + 1];
 	
+	for (std::vector<LocationBlock>::const_iterator it = server.locations.begin(); it != server.locations.end(); ++it)
+	{
+		if (it->path == location.path)
+			throw std::runtime_error("Duplicate location path: " + location.path);
+	}
+	
 	i += 3;
 
+	bool	hasMethods = false;
+	bool	hasLocationRoot = false;
+	bool	hasIndex = false;
+	bool	hasAutoIndex = false;
 	bool	hasUploadDir = false;
+	bool	hasRedirect = false;
 	
 	while (i < tokens.size() && tokens[i] != "}")
 	{
 		if (tokens[i] == "methods")
-			parseMethod(location, tokens, i);
+		{
+			if (hasMethods)
+				throw std::runtime_error("Duplicate method directive");
+			
+			parseMethods(location, tokens, i);
+			hasMethods = true;
+		}
 		else if (tokens[i] == "root")
+		{
+			if (hasLocationRoot)
+				throw std::runtime_error("Duplicate root directive in location");
+				
 			parseLocationRoot(location, tokens, i);
+			hasLocationRoot = true;
+		}
 		else if (tokens[i] == "index")
+		{
+			if (hasIndex)
+				throw std::runtime_error("Duplicate index directive");
+				
 			parseIndex(location, tokens, i);
+			hasIndex = true;
+		}
 		else if (tokens[i] == "autoindex")
+		{
+			if (hasAutoIndex)
+				throw std::runtime_error("Duplicate autoindex directive");
+				
 			parseAutoIndex(location, tokens, i);
+			hasAutoIndex = true;
+		}
 		else if (tokens[i] == "upload_dir")
 		{
 			if (hasUploadDir)
 				throw std::runtime_error("Duplicate upload_dir directive");
+			
 			parseUploadDir(location, tokens, i);
 			hasUploadDir = true;
 		}
 		else if (tokens[i] == "redirect")
 		{
-			if (location.redirectCode != 0)
+			if (hasRedirect)
 				throw std::runtime_error("Duplicate redirect directive");
+			
 			parseRedirect(location, tokens, i);
+			hasRedirect = true;
 		}
 		else if (tokens[i] == "cgi_handler")
 			parseCgiHandler(location, tokens, i);
 		else
-			++i;
+			throw std::runtime_error("Unknown location directive: " + tokens[i]);
 	}
 	
 	if (i >= tokens.size())
 		throw std::runtime_error("Unclosed location block");
 	
+	if (!hasMethods)
+		throw std::runtime_error("Location block requires a methods directive");
+		
 	++i;
 	
 	server.locations.push_back(location);
-
-	for (std::map<std::string, std::string>::const_iterator it =
-         location.cgiHandlers.begin();
-     it != location.cgiHandlers.end();
-     ++it)
-	{
-		std::cout << it->first
-				<< " -> "
-				<< it->second
-				<< std::endl;
-	}
 }
 
 void	Config::parse(const std::vector<std::string> &tokens)
@@ -532,6 +571,46 @@ void	Config::parse(const std::vector<std::string> &tokens)
 		++i;
 		
 		_servers.push_back(server);
+	}
+}
+
+void	Config::validateLocation(const LocationBlock &location) const
+{
+	if (location.path.empty() || location.path[0] != '/')
+		throw std::runtime_error("Invalide location path");
+	
+	if (location.methods.empty())
+		throw std::runtime_error("Location must define ate least one HTTP method");
+
+	if (location.redirectCode != 0 && location.redirectTarget.empty())
+		throw std::runtime_error("Redirect requires a target");
+}
+
+void	Config::validateServer(const ServerBlock &server) const
+{
+	if (server.listenAddr.port <= 0 || server.listenAddr.port > 65535)
+		throw std::runtime_error("Invalide server port");
+	
+	if (server.listenAddr.host.empty())
+		throw std::runtime_error("Server host cannot be empty");
+
+	if (server.root.empty())
+		throw std::runtime_error("Server root cannot be empty");
+
+	for (std::vector<LocationBlock>::const_iterator it = server.locations.begin(); it != server.locations.end(); ++it)
+	{
+		validateLocation(*it);
+	}
+}
+
+void	Config::validate() const
+{
+	if (_servers.empty())
+		throw std::runtime_error("Configuration must contains at least one server");
+
+	for (std::vector<ServerBlock>::const_iterator it = _servers.begin(); it != _servers.end(); ++it)
+	{
+		validateServer(*it);
 	}
 }
 
