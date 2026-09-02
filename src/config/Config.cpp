@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/01 15:17:11 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/02 13:34:00 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -325,6 +325,44 @@ void	Config::parseUploadDir(LocationBlock &location, const std::vector<std::stri
 	i += 3;
 }
 
+void	Config::parseRedirect(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i)
+{
+	if (i + 3 >= tokens.size())
+		throw std::runtime_error("Incomplete redirect directive");
+	
+	if (tokens[i + 1] == ";" || tokens[i + 2] == ";")
+		throw std::runtime_error("redirect directive cannot be empty");
+	
+	if (tokens[i + 3] != ";")
+		throw std::runtime_error("Expected ';' after redirect directive");
+
+	for (std::string::size_type j = 0; j < tokens[i + 1].size(); ++j)
+	{
+		if (!isdigit(static_cast<unsigned char>(tokens[i + 1][j])))
+			throw std::runtime_error("Invalid redirect status code");
+	}
+	
+	std::istringstream	stream(tokens[i + 1]);
+	int					code;
+	
+	if (!(stream >> code))
+		throw std::runtime_error("Invalid redirect status code");
+
+	if (code != 301 
+		&& code != 302
+		&& code != 303
+		&& code != 307
+		&& code != 308)
+	{
+		throw std::runtime_error("Invalid redirect status code");
+	}
+	
+	location.redirectCode = code;
+	location.redirectTarget = tokens[i + 2];
+
+	i += 4;
+}
+
 void	Config::parseLocation(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i)
 {
 	if (i + 2 >= tokens.size())
@@ -360,6 +398,12 @@ void	Config::parseLocation(ServerBlock &server, const std::vector<std::string> &
 				throw std::runtime_error("Duplicate upload_dir directive");
 			parseUploadDir(location, tokens, i);
 			hasUploadDir = true;
+		}
+		else if (tokens[i] == "redirect")
+		{
+			if (location.redirectCode != 0)
+				throw std::runtime_error("Duplicate redirect directive");
+			parseRedirect(location, tokens, i);
 		}
 		else
 			++i;
