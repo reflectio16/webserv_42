@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/02 13:34:00 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/02 15:10:13 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -363,6 +363,34 @@ void	Config::parseRedirect(LocationBlock &location, const std::vector<std::strin
 	i += 4;
 }
 
+void	Config::parseCgiHandler(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i)
+{
+	if (i + 3 >= tokens.size())
+		throw std::runtime_error("Incomplete cgi_handler directive");
+
+	if (tokens[i + 1] == ";" || tokens[i + 2] == ";")
+		throw std::runtime_error("cgi_handler directive cannot be empty");
+		
+	if (tokens[i + 3] != ";")
+		throw std::runtime_error("Expected ';' after cgi_handler directive");
+
+	const std::string &extension = tokens[i + 1];
+	const std::string &interpreter = tokens[i + 2];
+
+	if (extension.size() < 2 || extension[0] != '.')
+		throw std::runtime_error("Invalid CGI extension");
+
+	if (interpreter.empty() || interpreter[0] != '/')
+		throw std::runtime_error("CGI interpreter must be an absolute path");
+	
+	if (location.cgiHandlers.find(extension) != location.cgiHandlers.end())
+		throw std::runtime_error("Duplicate CGI extension");
+		
+	location.cgiHandlers[extension] = interpreter;
+
+	i += 4;
+}
+
 void	Config::parseLocation(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i)
 {
 	if (i + 2 >= tokens.size())
@@ -405,6 +433,8 @@ void	Config::parseLocation(ServerBlock &server, const std::vector<std::string> &
 				throw std::runtime_error("Duplicate redirect directive");
 			parseRedirect(location, tokens, i);
 		}
+		else if (tokens[i] == "cgi_handler")
+			parseCgiHandler(location, tokens, i);
 		else
 			++i;
 	}
@@ -415,6 +445,17 @@ void	Config::parseLocation(ServerBlock &server, const std::vector<std::string> &
 	++i;
 	
 	server.locations.push_back(location);
+
+	for (std::map<std::string, std::string>::const_iterator it =
+         location.cgiHandlers.begin();
+     it != location.cgiHandlers.end();
+     ++it)
+	{
+		std::cout << it->first
+				<< " -> "
+				<< it->second
+				<< std::endl;
+	}
 }
 
 void	Config::parse(const std::vector<std::string> &tokens)
