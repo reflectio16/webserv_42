@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/02 18:04:20 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/04 11:55:53 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -616,11 +616,54 @@ void	Config::validate() const
 
 std::vector<Endpoint>	Config::getEndpoints() const
 {
-	std::vector<Endpoint>						result;
-	std::vector<ServerBlock>::const_iterator	it;
+	std::vector<Endpoint>	endpoints;
 	
-	for (it = _servers.begin(); it != _servers.end(); ++it)
-		result.push_back(it->listenAddr);
+	for (std::vector<ServerBlock>::const_iterator it = _servers.begin(); it != _servers.end(); ++it)
+	{
+		bool	alreadyExists = false;
+		
+		for (std::vector<Endpoint>::const_iterator it2 = endpoints.begin(); it2 != endpoints.end(); ++it2)
+		{
+			if (it2->host == it->listenAddr.host && it2->port == it->listenAddr.port)
+			{
+				alreadyExists = true;
+				break;
+			}
+		}
+		
+		if (!alreadyExists)
+			endpoints.push_back(it->listenAddr);
+	}
 
-	return (result);
+	return (endpoints);
 }
+
+const std::vector<ServerBlock>	Config::getServers() const
+{
+	return (_servers);
+}
+
+const ServerBlock*	Config::findServer(const Endpoint &endpoint, const std::string &hostHeader) const
+{
+	const ServerBlock*	defaultServer = NULL;
+	
+	for (std::vector<ServerBlock>::const_iterator it = _servers.begin(); it != _servers.end(); ++it)
+	{
+		if (endpoint.host == it->listenAddr.host
+			&& endpoint.port == it->listenAddr.port)
+		{
+			if (defaultServer == NULL)
+				defaultServer = &(*it);
+			
+			if (hostHeader == it->serverName)
+				return (&(*it));
+		}
+	}
+	return (defaultServer);
+}
+
+const LocationBlock*	Config::findLocation(const ServerBlock &server, const std::string &uriPath) const
+{
+	
+}
+		

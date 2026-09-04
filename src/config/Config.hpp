@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:21 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/02 17:26:22 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/04 11:24:31 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,7 +49,10 @@ class Config
 		Config();
 		Config(const std::string &filename);
 
-		std::vector<Endpoint>	getEndpoints() const;
+		std::vector<Endpoint>			getEndpoints() const;
+		const std::vector<ServerBlock>	getServers() const;
+		const ServerBlock*				findServer(const Endpoint &endpoint, const std::string &hostHeader) const;
+		const LocationBlock*			findLocation(const ServerBlock &server, const std::string &uriPath) const;
 };
 
 #endif
