@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/04 11:55:53 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/07 15:44:52 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -647,6 +647,12 @@ const ServerBlock*	Config::findServer(const Endpoint &endpoint, const std::strin
 {
 	const ServerBlock*	defaultServer = NULL;
 	
+	std::string			normalizedHost = hostHeader;
+	std::string::size_type	colon = normalizedHost.find(':');
+
+	if (colon != std::string::npos)
+		normalizedHost = normalizedHost.substr(0, colon);
+	
 	for (std::vector<ServerBlock>::const_iterator it = _servers.begin(); it != _servers.end(); ++it)
 	{
 		if (endpoint.host == it->listenAddr.host
@@ -655,7 +661,7 @@ const ServerBlock*	Config::findServer(const Endpoint &endpoint, const std::strin
 			if (defaultServer == NULL)
 				defaultServer = &(*it);
 			
-			if (hostHeader == it->serverName)
+			if (!normalizedHost.empty() && normalizedHost == it->serverName)
 				return (&(*it));
 		}
 	}
@@ -664,6 +670,18 @@ const ServerBlock*	Config::findServer(const Endpoint &endpoint, const std::strin
 
 const LocationBlock*	Config::findLocation(const ServerBlock &server, const std::string &uriPath) const
 {
+	const	LocationBlock* 	bestMatch = NULL;
+	std::string::size_type	bestLength = 0;
 	
+	for (std::vector<LocationBlock>::const_iterator it = server.locations.begin(); it != server.locations.end(); ++it)
+	{
+		if (uriPath.compare(0, it->path.size(), it->path) == 0 && it->path.size() > bestLength)
+		{
+			bestMatch = &(*it);
+			bestLength = it->path.size();
+		}
+	}
+	
+	return (bestMatch);
 }
 		
