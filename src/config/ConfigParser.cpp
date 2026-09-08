@@ -1,0 +1,240 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   ConfigParser.cpp                                   :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/09/08 15:27:30 by fmoulin           #+#    #+#             */
+/*   Updated: 2026/09/08 15:31:29 by fmoulin          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "Config.hpp"
+#include "ServerBlock.hpp"
+#include <fstream>
+#include <sstream>
+#include <stdexcept>
+#include <cctype>
+#include <iostream>
+
+void	Config::parseListen(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i)
+{
+	if (i + 2 >= tokens.size())
+		throw std::runtime_error("Incomplete listen directive");
+
+	const std::string &value = tokens[i + 1];
+
+	std::string::size_type colonPos = value.find(':');
+
+	if (colonPos == std::string::npos)
+		throw std::runtime_error("Invalid listen directive");
+
+	std::string host = value.substr(0, colonPos);
+	std::string portString = value.substr(colonPos + 1);
+	
+	if (host.empty())
+		throw std::runtime_error("Listen host cannot be empty");
+
+	if (portString.empty())
+		throw std::runtime_error("Listen port cannot be empty");
+	
+	if (tokens[i + 2] != ";")
+		throw std::runtime_error("Expected ';' after listen directive");
+		
+	std::istringstream	stream(portString); 
+	int					port;
+	char				extra; //(extra is usefull in the case there would be something after the port. for example 8080banana. In this case with stream >> extra, banana would go directly in extra)
+
+	if (!(stream >> port) || (stream >> extra))
+		throw std::runtime_error("Invalid port");
+	
+	if (port < 1 || port > 65535)
+		throw std::runtime_error("Invalid port: out of range");
+	
+	server.listenAddr.host = host;
+	server.listenAddr.port = port;
+
+	i+=3;
+}
+
+void	Config::parseServerName(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i)
+{
+	if (i + 2 >= tokens.size())
+		throw std::runtime_error("Incomplete server name directive");
+	
+	if (tokens[i + 1] == ";")
+		throw std::runtime_error("Server name directive cannot be empty");
+		
+	if (tokens[i + 2] != ";")
+		throw std::runtime_error("Expected ';' after server name directive");
+	
+	server.serverName = tokens[i + 1];
+
+	i += 3;
+}
+
+void	Config::parseRoot(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i)
+{
+	if (i + 2 >= tokens.size())
+		throw std::runtime_error("Incomplete root directive");
+
+	if (tokens[i + 1] == ";")
+		throw std::runtime_error("Root directive cannot be empty");
+
+	if (tokens[i + 1][0] != '/')
+		throw std::runtime_error("Root must be an absolute path");
+
+	if (tokens[i + 2] != ";")
+		throw std::runtime_error("Expected ';' after root directive");
+	
+	server.root = tokens[i + 1];
+
+	i += 3;
+}
+
+void	Config::parseClientMaxBodySize(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i)
+{
+	if (i + 2 >= tokens.size())
+		throw std::runtime_error("Incomplete client_max_body_size directive");
+
+	if (tokens[i + 1] == ";")
+		throw std::runtime_error("client_max_body_size cannot be empty");
+	
+	if (tokens[i + 2] != ";")
+		throw std::runtime_error("Expected ';' after client max body size directive");
+
+	const std::string &value = tokens[i + 1];
+
+	for (std::string::size_type j = 0; j < value.size(); ++j)
+	{
+		if (!isdigit(static_cast<unsigned char>(value[j])))
+			throw std::runtime_error("Invalid client_max_body_size");
+	}
+
+	std::istringstream	stream(tokens[i + 1]);
+	size_t				bodySize;
+
+	if (!(stream >> bodySize))
+		throw std::runtime_error("Invalid client_max_body_size");
+		
+	server.clientMaxBodySize = bodySize;
+
+	i += 3;
+}
+
+void	Config::parseErrorPage(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i)
+{
+	if (i + 3 >= tokens.size())
+		throw std::runtime_error("Incomplete Error Page directive");
+	
+	if (tokens[i + 1] == ";" || tokens[i + 2] == ";")
+		throw std::runtime_error("Error page directive cannot be empty");
+	
+	if (tokens[i + 3] != ";")
+		throw std::runtime_error("Expected ';' after error page directive");
+	
+	const std::string &value = tokens[i + 1];
+		
+	for (std::string::size_type j = 0; j < value.size(); ++j)
+	{
+		if (!isdigit(static_cast<unsigned char>(value[j])))
+			throw std::runtime_error("Invalid error page status code");
+	}
+		
+	std::istringstream	stream(value);
+	int					code;
+
+	if (!(stream >> code))
+		throw std::runtime_error("Invalid error page status code");
+		
+	if (code < 400 || code > 599)
+		throw std::runtime_error("Error page status code must be between 400 and 599");
+
+	if (tokens[i + 2][0] != '/')
+		throw std::runtime_error("Error page path must start with '/'");
+
+	if (server.errorPages.find(code) != server.errorPages.end())
+		throw std::runtime_error("Duplicate error_page status code");
+		
+	server.errorPages[code] = tokens[i + 2];
+
+	i += 4;
+}
+
+void	Config::parse(const std::vector<std::string> &tokens)
+{
+	size_t i = 0;
+	
+	while (i < tokens.size())
+	{
+		if (tokens[i] != "server")
+			throw std::runtime_error("Expected: 'server'");
+		++i;
+		
+		if (i >= tokens.size() || tokens[i] != "{")
+			throw std::runtime_error("Expected: '{'");
+		++i;
+		
+		ServerBlock	server;
+		bool		hasListen = false;
+		bool		hasServerName = false;
+		bool		hasRoot = false;
+		bool		hasClientMaxBodySize = false;
+		
+		while (i < tokens.size() && tokens[i] != "}")
+		{			
+			if (tokens[i] == "listen")
+			{
+				if (hasListen)
+					throw std::runtime_error("Duplicate listen directive");
+				parseListen(server, tokens, i);
+				hasListen = true;
+			}
+			else if (tokens[i] == "server_name")
+			{
+				if (hasServerName)
+					throw std::runtime_error("Duplicate server name directive");
+				parseServerName(server, tokens, i);
+				hasServerName = true;
+			}
+			else if (tokens[i] == "root")
+			{
+				if (hasRoot)
+					throw std::runtime_error("Duplicate root directive");
+				parseRoot(server, tokens, i);
+				hasRoot = true;
+			}
+			else if (tokens[i] == "client_max_body_size")
+			{
+				if (hasClientMaxBodySize)
+					throw std::runtime_error("Duplicate client_max_body_size directive");
+				parseClientMaxBodySize(server, tokens, i);
+				hasClientMaxBodySize = true;
+			}
+			else if (tokens[i] == "error_page")
+			{
+				parseErrorPage(server, tokens, i);
+			}
+			else if (tokens[i] == "location")
+			{
+				parseLocation(server, tokens, i);
+			}
+			else
+				throw std::runtime_error("Unknown directive: " + tokens[i]);
+		}
+		
+		if (i >= tokens.size())
+			throw std::runtime_error("Unclosed server block");
+
+		if (!hasListen)
+			throw std::runtime_error("Missing listen directive");
+		
+		if (!hasRoot)
+			throw std::runtime_error("Missing root directive");
+		
+		++i;
+		
+		_servers.push_back(server);
+	}
+}
