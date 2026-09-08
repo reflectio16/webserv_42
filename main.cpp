@@ -6,11 +6,12 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/26 19:25:34 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/07 15:52:07 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/08 17:12:28 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Config.hpp"
+#include "HttpRequest.hpp"
 #include <iostream>
 #include <vector>
 
@@ -25,7 +26,7 @@ int main(int argc, char** argv) {
         std::vector<Endpoint>::const_iterator it;
         for (it = endpoints.begin(); it != endpoints.end(); ++it)
             std::cout << "host: " << it->host << "  port: " << it->port << std::endl;
-    }
+	}
     catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
 		return 1;
