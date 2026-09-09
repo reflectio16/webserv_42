@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/08 17:24:15 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/08 17:51:17 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/09 15:31:34 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,11 +27,15 @@ class RequestParser
 			BODY,
 			COMPLETE
 		};
+		
 	private:
-		State		_state;
-		HttpRequest	_request;
-		std::string	_buffer;
-		size_t		_contentLength;
+		State				_state;
+		HttpRequest			_request;
+		std::string			_buffer;
+		size_t				_contentLength;
+		
+		void				parseRequestLine(const std::string &line);
+		
 	public:
 		RequestParser();
 	
@@ -40,7 +44,6 @@ class RequestParser
 		State				getState() const;
 		bool				isComplete() const;
 		const HttpRequest&	getRequest() const;
-		
 };
 
 #endif

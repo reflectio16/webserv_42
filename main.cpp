@@ -6,12 +6,13 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/26 19:25:34 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/08 17:12:28 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/09 16:51:23 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Config.hpp"
 #include "HttpRequest.hpp"
+#include "RequestParser.hpp"
 #include <iostream>
 #include <vector>
 
