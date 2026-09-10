@@ -6,16 +6,19 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/08 17:24:15 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/09 15:31:34 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/09 18:26:53 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef REQUESTPARSER_HPP
 #define REQUESTPARSER_HPP
 
+#include "HttpRequest.hpp"
 #include <string>
 #include <cstddef>
-#include "HttpRequest.hpp"
+#include <sstream>
+#include <stdexcept>
+#include <cctype>
 
 class RequestParser
 {
@@ -35,6 +38,10 @@ class RequestParser
 		size_t				_contentLength;
 		
 		void				parseRequestLine(const std::string &line);
+		void				parseHeaderLine(const std::string &line);
+
+		static std::string	toLower(const std::string &str);
+		static std::string	trim(const std::string &str);
 		
 	public:
 		RequestParser();
