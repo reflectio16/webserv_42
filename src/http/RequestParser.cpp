@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/08 17:36:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/11 16:33:46 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/11 17:38:25 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -116,7 +116,36 @@ void	RequestParser::parseHeaderLine(const std::string &line)
 
 void	RequestParser::finishHeaders()
 {
-	_state = COMPLETE;
+	std::map<std::string, std::string>::const_iterator	it;
+	
+	it = _request.headers.find("content-length");
+
+	if (it == _request.headers.end())
+	{
+		_state = COMPLETE;
+		return ;
+	}
+
+	const std::string& value = it->second;
+
+	if (value.empty())
+		throw std::runtime_error("Content-length directive cannot be empty");
+		
+	for (std::string::size_type i = 0; i < value.size(); ++i)
+	{
+		if (!std::isdigit(static_cast<unsigned char>(value[i])))
+			throw std::runtime_error("Invalid content-length");
+	}
+
+	std::istringstream	stream(value);
+
+	if (!(stream >> _contentLength))
+		throw std::runtime_error("Invalid content-length");
+		
+	if (_contentLength == 0)
+		_state = COMPLETE;
+	else
+		_state = BODY;
 }
 
 
@@ -133,12 +162,12 @@ std::string	RequestParser::toLower(const std::string &str)
 
 std::string	RequestParser::trim(const std::string &str)
 {
-	std::string::size_type start = str.find_first_not_of("\t");
+	std::string::size_type start = str.find_first_not_of(" \t");
 
 	if (start == std::string::npos)
 		return ("");
 
-	std::string::size_type	end = str.find_last_not_of("\t");
+	std::string::size_type	end = str.find_last_not_of(" \t");
 	
 	return (str.substr(start, end - start + 1));
 }
