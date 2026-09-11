@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/08 17:36:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/10 16:10:53 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/11 16:33:46 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,7 +53,11 @@ void	RequestParser::feed(const char* data, size_t size)
 				return ;
 
 			if (pos == 0)
-				return ;
+			{
+				_buffer.erase(0, 2);
+				finishHeaders();
+				continue ;
+			}
 
 			std::string	line = _buffer.substr(0, pos);
 			
@@ -109,6 +113,12 @@ void	RequestParser::parseHeaderLine(const std::string &line)
 	
 	_request.headers[name] = value;
 }
+
+void	RequestParser::finishHeaders()
+{
+	_state = COMPLETE;
+}
+
 
 std::string	RequestParser::toLower(const std::string &str)
 {

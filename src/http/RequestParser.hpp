@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/08 17:24:15 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/09 18:26:53 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/11 16:29:26 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,6 +39,7 @@ class RequestParser
 		
 		void				parseRequestLine(const std::string &line);
 		void				parseHeaderLine(const std::string &line);
+		void				finishHeaders();
 
 		static std::string	toLower(const std::string &str);
 		static std::string	trim(const std::string &str);
