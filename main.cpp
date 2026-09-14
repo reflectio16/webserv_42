@@ -6,11 +6,11 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/26 19:25:34 by meelma            #+#    #+#             */
-/*   Updated: 2026/08/26 19:25:36 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/14 14:25:55 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Config.hpp"
+/*#include "Config.hpp"
 #include <iostream>
 #include <vector>
 
@@ -28,6 +28,25 @@ int main(int argc, char** argv) {
     }
     catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
+    }
+    return 0;
+}*/
+
+#include "Server.hpp"
+#include <iostream>
+
+int main(int argc, char** argv) {
+    if (argc != 2) {
+        std::cerr << "usage: " << argv[0] << " <config file>" << std::endl;
+        return 1;
+    }
+    try {
+        Server server(argv[1]);
+        server.run();
+    }
+    catch (const std::exception& e) {
+        std::cerr << "error: " << e.what() << std::endl;
+        return 1;
     }
     return 0;
 }
