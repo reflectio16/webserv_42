@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:56 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/14 14:18:58 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/18 17:53:28 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,7 +53,8 @@ private:
     void removeFromPoll(int fd);
     void watchFor(int fd, short events);   // used once the write path exists
 
-    // non-copyable: owns fds, must not be duplicated
+    // non-copyable: server owns fds, must not be duplicated
+    // we declare them private and never define them
     Server(const Server&);
     Server& operator=(const Server&);
 };

@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:37 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/14 14:18:39 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/19 20:28:52 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,8 +45,11 @@ Server::~Server() {
 // ---- startup ---------------------------------------------------------------
 
 void Server::setupListeners() {
-    std::vector<Endpoint> endpoints = _config.getEndpoints();
+    std::vector<Endpoint> endpoints = _config.getEndpoints(); //Ask the config for the list of host:port pairs to open
     std::set<std::pair<std::string, int> > bound;   // note the space: > >, not >>
+                                                    // bound is a set that remembers 
+                                                    // which host:port pairs you've already opened, 
+                                                    // so we can skip duplicates.
 
     for (size_t i = 0; i < endpoints.size(); ++i) {
         std::pair<std::string, int> key(endpoints[i].host, endpoints[i].port);
