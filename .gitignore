@@ -8,3 +8,4 @@ webserv
 .vscode/
 .DS_Store
 *.swp
+src/http/RequestParser.hpp
