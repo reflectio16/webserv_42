@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Connection.cpp                                     :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/09/21 16:00:28 by meelma            #+#    #+#             */
+/*   Updated: 2026/09/21 16:02:53 by meelma           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "Connection.hpp"
 
 // Constructor: sane defaults for a freshly accepted client.
@@ -68,7 +80,7 @@ bool Connection::responseFullySent() const {
 // one of these resets is the classic "second request behaves weirdly" bug.
 // The caller must ALSO flip the poll mask back to POLLIN-only.
 void Connection::resetForNextRequest() {
-    //parser.reset();     // clear partial-parse state
+    parser.reset();     // clear partial-parse state
     outbuf.clear();     // discard the sent response
     writeOffset = 0;
     compact();          // drop consumed bytes, keep the remainder

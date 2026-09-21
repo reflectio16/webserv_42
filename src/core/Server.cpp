@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:37 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/19 20:28:52 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/21 15:56:21 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,10 @@
 #include <iostream>
 #include <set>
 #include <utility>        // pair, make_pair
+
+
+// Guard so a client whose headers never end can't grow inbuf without bound.
+static const std::size_t MAX_REQUEST_BYTES = 64 * 1024;
 
 Server::Server(const std::string& configPath)
     : _config(configPath)      // Config parses the file here; throws on bad config
@@ -115,7 +119,12 @@ void Server::dispatch(int fd, short revents) {
         if (cit != _conns.end())
             onReadable(cit->second);
     }
-    // POLLOUT handling arrives with the write path (next milestone)
+    if (revents & POLLOUT) {
+        // re-find: onReadable above may have closed this fd
+        std::map<int, Connection>::iterator cit = _conns.find(fd);
+        if (cit != _conns.end())
+            onWritable(cit->second);
+    }
 }
 
 void Server::acceptClient(int listenFd) {
@@ -147,12 +156,93 @@ void Server::onReadable(Connection& conn) {
     }
 
     conn.inbuf.append(buf, static_cast<size_t>(n));   // connection owns the tape
-
-    // --- next milestone plugs in here: feed the parser, and on a COMPLETE
-    //     request build a response, queueResponse(), watchFor(fd, POLLOUT). ---
+    processInput(conn);
     std::cout << "[fd " << conn.fd << "] received " << n
               << " bytes (total buffered: " << conn.inbuf.size() << ")" << std::endl;
 }
+
+// Feed the parser and act on its verdict. Split out from onReadable so the
+// keep-alive path can re-run it on already-buffered (pipelined) bytes with
+// no new recv.
+    void Server::processInput(Connection& conn) {
+        if (conn.unconsumedBytes() > MAX_REQUEST_BYTES) {
+            conn.keepAlive = false;
+            conn.queueResponse(buildError(431, "Request Header Fields Too Large"));
+            watchFor(conn.fd, POLLOUT);
+            return;
+    }
+ 
+    RequestParser::Status st = conn.parser.parse(conn.inbuf, conn.parsePos);
+ 
+    if (st == RequestParser::INCOMPLETE)
+        return;                                   // need more bytes; stay on POLLIN
+ 
+    if (st == RequestParser::PARSE_ERROR) {
+        conn.keepAlive = false;
+        conn.queueResponse(buildError(400, "Bad Request"));
+        watchFor(conn.fd, POLLOUT);
+        return;
+    }
+ 
+    // COMPLETE
+    conn.parsePos = conn.parser.bytesConsumed();  // advance past this request
+    conn.queueResponse(buildResponse());          // TODO: ResponseBuilder::build(req, cfg)
+    watchFor(conn.fd, POLLOUT);                   // arm the write phase
+}
+
+// ---- write, then keep-alive or close ---------------------------------------
+ 
+void Server::onWritable(Connection& conn) {
+    size_t remaining = conn.outbuf.size() - conn.writeOffset;
+    ssize_t n = send(conn.fd, conn.outbuf.data() + conn.writeOffset, remaining, 0);
+    if (n < 0) {                                  // gone; no errno check
+        closeConnection(conn.fd);
+        return;
+    }
+    conn.writeOffset += static_cast<size_t>(n);
+ 
+    if (!conn.responseFullySent())
+        return;                                   // partial send; wait next POLLOUT
+ 
+    if (conn.keepAlive) {
+        conn.resetForNextRequest();               // struct scrubs its own leftovers
+        watchFor(conn.fd, POLLIN);                // THE FLIP: writing -> reading
+        if (conn.hasBufferedRequest())            // a pipelined request already here?
+            processInput(conn);                   // parse it now, no waiting
+    } else {
+        closeConnection(conn.fd);
+    }
+}
+
+// ---- response building (temporary; becomes the HTTP ResponseBuilder) -------
+ 
+std::string Server::buildResponse() {
+    std::string body = "Hello from webserv\n";
+    std::ostringstream oss;
+    oss << "HTTP/1.1 200 OK\r\n"
+        << "Content-Type: text/plain\r\n"
+        << "Content-Length: " << body.size() << "\r\n"
+        << "\r\n"
+        << body;
+    return oss.str();
+}
+ 
+std::string Server::buildError(int code, const std::string& reason) {
+    std::ostringstream body;
+    body << "<html><body><h1>" << code << " " << reason << "</h1></body></html>\n";
+    std::string b = body.str();
+ 
+    std::ostringstream oss;
+    oss << "HTTP/1.1 " << code << " " << reason << "\r\n"
+        << "Content-Type: text/html\r\n"
+        << "Content-Length: " << b.size() << "\r\n"
+        << "Connection: close\r\n"           // errors close the connection
+        << "\r\n"
+        << b;
+    return oss.str();
+}
+
+// ---- teardown + poll-set bookkeeping ---------------------------------------
 
 void Server::closeConnection(int fd) {
     close(fd);              // 1. close the socket

@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/25 17:13:30 by meelma            #+#    #+#             */
-/*   Updated: 2026/08/26 17:40:09 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/21 16:01:24 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,7 @@
 #include <string>
 #include <cstddef>
 #include <sys/types.h>          // pid_t
-//#include "RequestParser.hpp"    // parser is a by-value member -> needs full type
+#include "RequestParser.hpp"    // parser is a by-value member -> needs full type
 
 // Per-client state object, owned by the I/O layer. Created on accept(), lives
 // until the socket closes. Holds everything that must survive between poll
@@ -37,7 +37,7 @@ struct Connection {
     // ---- read side: append-only tape + cursor ----
     std::string   inbuf;          // recv() appends here; never erased mid-request
     std::size_t   parsePos;       // how far the parser has consumed inbuf
-    //RequestParser parser;         // reads inbuf from parsePos; never mutates it
+    RequestParser parser;         // reads inbuf from parsePos; never mutates it
 
     // ---- write side ----
     std::string   outbuf;         // full response queued to send

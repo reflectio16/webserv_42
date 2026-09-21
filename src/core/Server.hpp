@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:56 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/18 17:53:28 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/21 15:44:50 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,8 +45,16 @@ private:
     // ---- loop steps ----
     void dispatch(int fd, short revents);
     void acceptClient(int listenFd);
-    void onReadable(Connection& conn);
+    void onReadable(Connection& conn);      //recv, then hand to processInput
+    void processInput(Connection& conn);   // feed the parser, act on the verdict
+    void onWritable(Connection& conn);     // drain outbuf, then keep-alive or close
     void closeConnection(int fd);
+
+
+    // response building -- TEMPORARY placeholders for the HTTP-side ResponseBuilder
+    std::string buildResponse();
+    std::string buildError(int code, const std::string& reason);
+
 
     // ---- poll-set bookkeeping (the mask lives here, not in Connection) ----
     void addToPoll(int fd, short events, FdRole role);
