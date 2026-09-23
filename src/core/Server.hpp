@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:56 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/21 15:44:50 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/23 14:12:21 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,7 +52,7 @@ private:
 
 
     // response building -- TEMPORARY placeholders for the HTTP-side ResponseBuilder
-    std::string buildResponse();
+    std::string buildResponse(const HttpRequest& req);
     std::string buildError(int code, const std::string& reason);
 
 

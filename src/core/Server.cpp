@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:37 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/21 15:56:21 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/23 14:11:31 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -184,10 +184,12 @@ void Server::onReadable(Connection& conn) {
         return;
     }
  
-    // COMPLETE
-    conn.parsePos = conn.parser.bytesConsumed();  // advance past this request
-    conn.queueResponse(buildResponse());          // TODO: ResponseBuilder::build(req, cfg)
-    watchFor(conn.fd, POLLOUT);                   // arm the write phase
+    // COMPLETE ---------------------------------------------------------------
+    const HttpRequest& req = conn.parser.request();   // read his parsed request
+    conn.keepAlive = req.keepAlive;                    // honor Connection: close for real
+    conn.parsePos  = conn.parser.bytesConsumed();
+    conn.queueResponse(buildResponse(req));            // pass the request in
+    watchFor(conn.fd, POLLOUT);
 }
 
 // ---- write, then keep-alive or close ---------------------------------------
@@ -216,14 +218,18 @@ void Server::onWritable(Connection& conn) {
 
 // ---- response building (temporary; becomes the HTTP ResponseBuilder) -------
  
-std::string Server::buildResponse() {
-    std::string body = "Hello from webserv\n";
+std::string Server::buildResponse(const HttpRequest& req) {
+    std::ostringstream body;
+    body << "You requested: " << req.method << " " << req.path << "\n";
+    std::string b = body.str();
+
     std::ostringstream oss;
     oss << "HTTP/1.1 200 OK\r\n"
         << "Content-Type: text/plain\r\n"
-        << "Content-Length: " << body.size() << "\r\n"
-        << "\r\n"
-        << body;
+        << "Content-Length: " << b.size() << "\r\n";
+    if (!req.keepAlive)
+        oss << "Connection: close\r\n";
+    oss << "\r\n" << b;
     return oss.str();
 }
  
