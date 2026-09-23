@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Config.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
+/*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:21 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/08/26 19:26:52 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/04 11:24:31 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,21 +15,7 @@
 
 #include <string>
 #include <vector>
-
-struct Endpoint
-{
-	std::string	host;
-	int			port;
-	
-	Endpoint() : host(""), port(0) {}
-};
-
-struct ServerBlock
-{
-	Endpoint	listenAddr;
-	std::string	serverName;
-	std::string	root;
-};
+#include "ServerBlock.hpp"
 
 class Config
 {
@@ -37,15 +23,36 @@ class Config
 		std::vector<ServerBlock>	_servers;
 		std::string					readFile(const std::string &filename) const;
 		std::vector<std::string>	tokenize(const std::string &content) const;
+		
 		void						parse(const std::vector<std::string> &tokens);
+		
 		void						parseListen(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i);
 		void						parseServerName(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i);
 		void						parseRoot(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i);
+		void						parseClientMaxBodySize(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i);
+		void						parseErrorPage(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i);
+		
+		void						parseLocation(ServerBlock &server, const std::vector<std::string> &tokens, size_t &i);
+		
+		void						parseMethods(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
+		void						parseLocationRoot(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
+		void						parseIndex(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
+		void						parseAutoIndex(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
+		void						parseUploadDir(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
+		void						parseRedirect(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
+		void						parseCgiHandler(LocationBlock &location, const std::vector<std::string> &tokens, size_t &i);
+
+		void						validate() const;
+		void						validateServer(const ServerBlock &server) const;
+		void						validateLocation(const LocationBlock &location) const;
 	public:
 		Config();
 		Config(const std::string &filename);
 
-		std::vector<Endpoint>	getEndpoints() const;
+		std::vector<Endpoint>			getEndpoints() const;
+		const std::vector<ServerBlock>	getServers() const;
+		const ServerBlock*				findServer(const Endpoint &endpoint, const std::string &hostHeader) const;
+		const LocationBlock*			findLocation(const ServerBlock &server, const std::string &uriPath) const;
 };
 
 #endif
