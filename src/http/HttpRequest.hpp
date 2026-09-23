@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/08 16:23:07 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/08 16:47:05 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/22 17:33:48 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,21 +19,20 @@
 struct HttpRequest
 {
 	std::string	method;
-	std::string	target;
 	std::string	path;
-	std::string	queryString;
+	std::string	query;
 	std::string	version;
-	
 	std::map<std::string, std::string>	headers;
-	
 	std::string	body;
+	bool		keepAlive;
 	
 	HttpRequest()
 		: 	method(""),
-			target(""),
 			path(""),
-			queryString(""),
-			version("")
+			query(""),
+			version(""),
+			body(""),
+			keepAlive(false)
 	{
 	}
 };

@@ -6,73 +6,116 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/08 17:36:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/11 17:38:25 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/23 12:07:50 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "RequestParser.hpp"
+#include <sstream>
+#include <cctype>
 
 RequestParser::RequestParser()
 	:	_state(REQUEST_LINE),
 		_request(),
-		_buffer(""),
-		_contentLength(0)
+		_contentLength(0),
+		_pos(0),
+		_bytesConsumed(0),
+		_started(false)
 {
 	
 }
 
-void	RequestParser::feed(const char* data, size_t size)
+RequestParser::Status	RequestParser::parse(const std::string& inbuf, std::size_t fromPos)
 {
-	_buffer.append(data, size);
-
-	while (true)
+	try
 	{
-		if (_state == REQUEST_LINE)
+		if (!_started)
 		{
-			std::string::size_type	pos = _buffer.find("\r\n");
-	
-			if (pos == std::string::npos)
-				return ;
+			if (fromPos > inbuf.size())
+				return (PARSE_ERROR);
 				
-			std::string line = _buffer.substr(0, pos);
-			
-			_buffer.erase(0, pos + 2);
-			
-			parseRequestLine(line);
-			
-			_state = HEADERS;
-			
-			continue ;
+			_pos = fromPos;
+			_started = true;
 		}
-		
-		if (_state == HEADERS)
+
+		while (true)
 		{
-			std::string::size_type	pos = _buffer.find("\r\n");
-
-			if (pos == std::string::npos)
-				return ;
-
-			if (pos == 0)
+			if (_state == REQUEST_LINE)
 			{
-				_buffer.erase(0, 2);
-				finishHeaders();
+				std::string::size_type	end = inbuf.find("\r\n", _pos);
+
+				if (end == std::string::npos)
+					return (INCOMPLETE);
+				
+				std::string	line = inbuf.substr(_pos, end - _pos);
+
+				if (!parseRequestLine(line))
+					return (PARSE_ERROR);
+
+				_pos = end + 2;
+				_state = HEADERS;
+				continue ;
+			}
+			
+			if (_state == HEADERS)
+			{
+				std::string::size_type	end = inbuf.find("\r\n", _pos);
+
+				if (end == std::string::npos)
+					return (INCOMPLETE);
+				
+				if (end == _pos)
+				{
+					_pos += 2;
+
+					if (!finishHeaders())
+						return (PARSE_ERROR);
+						
+					updateKeepAlive();
+					
+					if (_contentLength == 0)
+					{
+						_bytesConsumed = _pos;
+						return (COMPLETE);
+					}
+					
+					continue ;
+				}
+				
+				std::string line = inbuf.substr(_pos, end - _pos);
+				
+				if (!parseHeaderLine(line))
+					return (PARSE_ERROR);
+
+				_pos = end + 2;
 				continue ;
 			}
 
-			std::string	line = _buffer.substr(0, pos);
 			
-			_buffer.erase(0, pos + 2);
-			
-			parseHeaderLine(line);
+			if (_state == BODY)
+			{
+				if (_pos > inbuf.size())
+					return (PARSE_ERROR);
+					
+				if (inbuf.size() - _pos < _contentLength)
+					return (INCOMPLETE);
+					
+				_request.body.assign(inbuf, _pos, _contentLength);
+				
+				_pos += _contentLength;
+				_bytesConsumed = _pos;
 
-			continue ;
+				return (COMPLETE);
+			}
 		}
-		
-		return ;
+	}
+	catch(...)
+	{
+		return (PARSE_ERROR);
 	}
 }
 
-void	RequestParser::parseRequestLine(const std::string &line)
+bool	RequestParser::parseRequestLine(const std::string &line)
 {
 	std::istringstream	stream(line);
 	
@@ -82,22 +125,36 @@ void	RequestParser::parseRequestLine(const std::string &line)
 	std::string	extra;
 
 	if (!(stream >> method >> target >> version))
-		throw std::runtime_error("Invalid HTTP request line");
+		return (false);
 
 	if (stream >> extra)
-		throw std::runtime_error("Invalid HTTP request line");
+		return (false);
 
 	_request.method = method;
-	_request.target = target;
 	_request.version = version;
+
+	std::string::size_type	question = target.find('?');
+
+	if (question == std::string::npos)
+	{
+		_request.path = target;
+		_request.query = "";
+	}
+	else
+	{
+		_request.path = target.substr(0, question);
+		_request.query = target.substr(question + 1);
+	}
+
+	return (true);
 }
 
-void	RequestParser::parseHeaderLine(const std::string &line)
+bool	RequestParser::parseHeaderLine(const std::string &line)
 {
 	std::string::size_type	colon = line.find(':');
 	
 	if (colon == std::string::npos || colon == 0)
-		throw std::runtime_error("Invalid HTTP header");
+		return (false);
 		
 	std::string	name = line.substr(0, colon);
 	std::string	value = line.substr(colon + 1);
@@ -105,47 +162,48 @@ void	RequestParser::parseHeaderLine(const std::string &line)
 	for (std::string::size_type i = 0; i != name.size(); ++i)
 	{
 		if (name[i] == ' ' || name[i] == '\t')
-			throw std::runtime_error("Invalid HTTP header name");
+			return (false);
 	}
 
 	name = toLower(name);
 	value = trim(value);
 	
 	_request.headers[name] = value;
+
+	return (true);
 }
 
-void	RequestParser::finishHeaders()
+bool	RequestParser::finishHeaders()
 {
+	_contentLength = 0;
+	
 	std::map<std::string, std::string>::const_iterator	it;
 	
 	it = _request.headers.find("content-length");
 
 	if (it == _request.headers.end())
-	{
-		_state = COMPLETE;
-		return ;
-	}
+		return (true);
 
 	const std::string& value = it->second;
 
 	if (value.empty())
-		throw std::runtime_error("Content-length directive cannot be empty");
+		return (false);
 		
 	for (std::string::size_type i = 0; i < value.size(); ++i)
 	{
 		if (!std::isdigit(static_cast<unsigned char>(value[i])))
-			throw std::runtime_error("Invalid content-length");
+			return (false);
 	}
 
 	std::istringstream	stream(value);
 
 	if (!(stream >> _contentLength))
-		throw std::runtime_error("Invalid content-length");
+		return (false);
 		
-	if (_contentLength == 0)
-		_state = COMPLETE;
-	else
+	if (_contentLength > 0)
 		_state = BODY;
+	
+	return (true);
 }
 
 
@@ -172,17 +230,40 @@ std::string	RequestParser::trim(const std::string &str)
 	return (str.substr(start, end - start + 1));
 }
 
-RequestParser::State	RequestParser::getState() const
+std::size_t			RequestParser::bytesConsumed() const
 {
-	return (_state);
+	return (_bytesConsumed);
 }
 
-bool	RequestParser::isComplete() const
+
+void	RequestParser::reset()
 {
-	return (_state == COMPLETE);
+	_state = REQUEST_LINE;
+	_request = HttpRequest();
+	_contentLength = 0;
+	_pos = 0;
+	_bytesConsumed = 0;
+	_started = false;	
 }
 
-const HttpRequest&	RequestParser::getRequest() const
+const HttpRequest&	RequestParser::request() const
 {
 	return (_request);
+}
+
+void	RequestParser::updateKeepAlive()
+{
+	_request.keepAlive = (_request.version == "HTTP/1.1");
+
+	std::map<std::string, std::string>::const_iterator	it = _request.headers.find("connection");
+
+	if (it == _request.headers.end())
+		return ;
+
+	std::string	value = toLower(trim(it->second));
+
+	if (value == "close")
+		_request.keepAlive = false;
+	else if (value == "keep-alive")
+		_request.keepAlive = true;
 }
