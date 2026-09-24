@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/08 17:24:15 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/23 12:07:30 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/24 16:35:21 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,7 +41,11 @@ class RequestParser
 		{
 			REQUEST_LINE,
 			HEADERS,
-			BODY
+			BODY,
+			CHUNK_SIZE,
+			CHUNK_DATA,
+			CHUNK_DATA_CRLF,
+			CHUNK_TRAILERS
 		};
 		
 		ParseState			_state;
@@ -52,10 +56,15 @@ class RequestParser
 		std::size_t			_bytesConsumed;
 
 		bool				_started;
+
+		std::size_t			_chunkSize;
+		bool				_chunked;
 		
 		bool				parseRequestLine(const std::string &line);
 		bool				parseHeaderLine(const std::string &line);
 		bool				finishHeaders();
+		
+		bool				parseChunkSize(const std::string& line, std::size_t& size);
 
 		static std::string	toLower(const std::string &str);
 		static std::string	trim(const std::string &str);
