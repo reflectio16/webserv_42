@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/08 17:36:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/25 12:55:01 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/25 14:45:26 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,11 +44,6 @@ RequestParser::Status	RequestParser::parse(const std::string& inbuf, std::size_t
 
 		while (true)
 		{
-			std::cout	<< "STATE = " << _state
-						<< " POS = " << _pos
-						<< " SIZE = " << inbuf.size()
-						<< std::endl;
-		  
 			if (_state == REQUEST_LINE)
 			{
 				std::string::size_type	end = inbuf.find("\r\n", _pos);
@@ -77,6 +72,9 @@ RequestParser::Status	RequestParser::parse(const std::string& inbuf, std::size_t
 				{
 					_pos += 2;
 
+					if (!validateHeaders())
+						return (PARSE_ERROR);
+						
 					if (!finishHeaders())
 						return (PARSE_ERROR);
 						
@@ -219,6 +217,9 @@ bool	RequestParser::parseRequestLine(const std::string &line)
 
 	if (!validateVersion(version))
 		return (false);
+	
+	if (target.empty() || target[0] != '/')
+		return (false);
 		
 	std::string::size_type	question = target.find('?');
 
@@ -255,6 +256,11 @@ bool	RequestParser::parseHeaderLine(const std::string &line)
 	name = toLower(name);
 	value = trim(value);
 	
+	if (name == "host" || name == "content-length" || name == "transfer-encoding")
+	{
+		if (_request.headers.find(name) != _request.headers.end())
+			return (false);
+	}
 	_request.headers[name] = value;
 
 	return (true);
@@ -410,5 +416,23 @@ bool	RequestParser::parseChunkSize(const std::string& line, std::size_t& size)
 
 bool	RequestParser::validateVersion(const std::string& version) const
 {
-		return (version == "HTTP/1.1" || version == "HTTP/1.0");
+	return (version == "HTTP/1.1" || version == "HTTP/1.0");
+}
+
+bool	RequestParser::validateHeaders() const
+{
+	if (_request.version == "HTTP/1.1")
+	{
+		std::map<std::string, std::string>::const_iterator	it;
+		
+		it = _request.headers.find("host");
+		
+		if (it == _request.headers.end())
+			return(false);
+			
+		if (trim(it->second).empty())
+			return (false);
+	}
+	
+	return (true);
 }

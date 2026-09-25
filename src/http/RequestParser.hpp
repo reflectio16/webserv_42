@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/08 17:24:15 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/25 12:45:38 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/25 13:14:04 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,6 +67,7 @@ class RequestParser
 		bool				parseChunkSize(const std::string& line, std::size_t& size);
 
 		bool				validateVersion(const std::string& version) const;
+		bool				validateHeaders() const;
 
 		static std::string	toLower(const std::string &str);
 		static std::string	trim(const std::string &str);
