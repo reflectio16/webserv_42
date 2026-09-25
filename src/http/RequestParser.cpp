@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/08 17:36:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/24 17:09:21 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/25 12:55:01 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #include <sstream>
 #include <cctype>
 #include <iomanip>
+#include <iostream>
 
 RequestParser::RequestParser()
 	:	_state(REQUEST_LINE),
@@ -43,6 +44,11 @@ RequestParser::Status	RequestParser::parse(const std::string& inbuf, std::size_t
 
 		while (true)
 		{
+			std::cout	<< "STATE = " << _state
+						<< " POS = " << _pos
+						<< " SIZE = " << inbuf.size()
+						<< std::endl;
+		  
 			if (_state == REQUEST_LINE)
 			{
 				std::string::size_type	end = inbuf.find("\r\n", _pos);
@@ -112,9 +118,9 @@ RequestParser::Status	RequestParser::parse(const std::string& inbuf, std::size_t
 
 			if (_state == CHUNK_SIZE)
 			{
-				std::string::size_type	end = inbuf.find("\r\n");
+				std::string::size_type	end = inbuf.find("\r\n", _pos);
 				
-				if (end != std::string::npos)
+				if (end == std::string::npos)
 					return (INCOMPLETE);
 				
 				std::string	line = inbuf.substr(_pos, end - _pos);
@@ -131,6 +137,58 @@ RequestParser::Status	RequestParser::parse(const std::string& inbuf, std::size_t
 				}
 
 				_state = CHUNK_DATA;
+				continue;
+			}
+
+			if (_state == CHUNK_DATA)
+			{
+				if (_pos > inbuf.size())
+					return (PARSE_ERROR);
+				
+				if (inbuf.size() - _pos < _chunkSize)
+					return (INCOMPLETE);
+
+				if (_chunkSize > std::string::npos - _request.body.size())
+					return (PARSE_ERROR);
+					
+				_request.body.append(inbuf, _pos, _chunkSize);
+
+				_pos += _chunkSize;
+				
+				_state = CHUNK_DATA_CRLF;
+				continue;
+			}
+
+			if (_state == CHUNK_DATA_CRLF)
+			{
+				if (inbuf.size() - _pos < 2)
+					return (INCOMPLETE);
+
+				if (inbuf.compare(_pos, 2, "\r\n") != 0)
+					return (PARSE_ERROR);
+					
+				_pos += 2;
+
+				_state = CHUNK_SIZE;
+				continue;
+			}
+
+			if (_state == CHUNK_TRAILERS)
+			{
+				std::string::size_type	end = inbuf.find("\r\n", _pos);
+
+				if (end == std::string::npos)
+					return (INCOMPLETE);
+				
+				if (end == _pos)
+				{
+					_pos += 2;
+					_bytesConsumed = _pos;
+
+					return (COMPLETE);
+				}
+
+				_pos = end + 2;
 				continue;
 			}
 		}
@@ -159,6 +217,9 @@ bool	RequestParser::parseRequestLine(const std::string &line)
 	_request.method = method;
 	_request.version = version;
 
+	if (!validateVersion(version))
+		return (false);
+		
 	std::string::size_type	question = target.find('?');
 
 	if (question == std::string::npos)
@@ -345,4 +406,9 @@ bool	RequestParser::parseChunkSize(const std::string& line, std::size_t& size)
 		return (false);
 	
 	return (true);
+}
+
+bool	RequestParser::validateVersion(const std::string& version) const
+{
+		return (version == "HTTP/1.1" || version == "HTTP/1.0");
 }
