@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:56 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/23 14:12:21 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/27 17:05:46 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,11 +33,12 @@ private:
     // What kind of fd is this? (client vs a listening socket.) CGI roles later.
     enum FdRole { LISTENING, CLIENT };
 
-    Config                      _config;   // kept for later (routing)
-    std::vector<struct pollfd>  _pfds;     // the poll set -- each .events IS the mask
-    std::map<int, FdRole>       _roles;    // fd -> role
-    std::map<int, Connection>   _conns;    // client fd -> its Connection (by value:
-                                           //   map nodes are stable, no manual delete)
+    Config                      _config;            // kept for later (routing)
+    std::vector<struct pollfd>  _pfds;              // the poll set -- each .events IS the mask
+    std::map<int, FdRole>       _roles;             // fd -> role
+    std::map<int, Connection>   _conns;             // client fd -> its Connection (by value:
+                                                    //   map nodes are stable, no manual delete)
+    std::map<int, Endpoint>     _listenEndpoints;   // listening fd -> its hos:port
 
     // ---- startup ----
     void setupListeners();

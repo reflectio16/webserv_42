@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:37 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/23 14:11:31 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/27 17:06:57 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -141,7 +141,13 @@ void Server::acceptClient(int listenFd) {
         return;
     }
 
-    _conns.insert(std::make_pair(clientFd, Connection(clientFd)));
+    Connection conn(clientFd);
+    std::map<int, Endpoint>::iterator ep = _listenEndpoints.find(listenFd);
+    if (ep != _listenEndpoints.end()) {
+        conn.listenHost = ep->second.host;
+        conn.listenPort = ep->second.port;
+    }
+    _conns.insert(std::make_pair(clientFd, conn));
     addToPoll(clientFd, POLLIN, CLIENT);
     std::cout << "[+] client connected (fd " << clientFd << ")" << std::endl;
 }

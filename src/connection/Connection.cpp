@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/21 16:00:28 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/21 16:02:53 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/27 17:03:21 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,7 @@ Connection::Connection(int clientFd)
       writeOffset(0),
       keepAlive(true),          // HTTP/1.1 default; the parser may flip it
       lastActivityMs(0),
+      listenPort(0),
       cgiPid(-1),
       cgiStdinFd(-1),
       cgiStdoutFd(-1),

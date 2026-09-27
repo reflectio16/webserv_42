@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/25 17:13:30 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/21 16:01:24 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/27 17:09:20 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,6 +46,10 @@ struct Connection {
     // ---- control ----
     bool          keepAlive;      // reuse after this response, or close?
     long          lastActivityMs; // for the idle-timeout sweep
+
+    // ---- which listening endpoint this client arrived on ----
+    std::string   listenHost;      // for server-block matching later
+    int           listenPort;
 
     // ---- CGI (valid only while state == CGI_RUNNING) ----
     pid_t         cgiPid;
