@@ -6,12 +6,13 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:37 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/27 17:06:57 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/27 22:02:49 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server.hpp"
 #include "ListeningSocket.hpp"
+#include "CgiProcess.hpp"
 
 #include <sys/socket.h>   // accept, recv
 #include <sys/types.h>    // ssize_t
@@ -106,6 +107,28 @@ void Server::dispatch(int fd, short revents) {
     if (it->second == LISTENING) {
         if (revents & POLLIN)
             acceptClient(fd);
+        return;
+    }
+    if (it->second == CGI_STDIN) {
+        if (revents & POLLOUT) {
+            std::map<int, int>::iterator o = _cgiOwner.find(fd);
+            if (o != _cgiOwner.end()) {
+                std::map<int, Connection>::iterator c = _conns.find(o->second);
+                if (c != _conns.end())
+                    CgiProcess::onStdinWritable(c->second);
+            }
+        }
+        return;
+    }
+    if (it->second == CGI_STDOUT) {
+        if (revents & (POLLIN | POLLHUP)) {   // POLLHUP: child closed stdout / exited
+            std::map<int, int>::iterator o = _cgiOwner.find(fd);
+            if (o != _cgiOwner.end()) {
+                std::map<int, Connection>::iterator c = _conns.find(o->second);
+                if (c != _conns.end())
+                    CgiProcess::onStdoutReadable(c->second);
+            }
+        }
         return;
     }
 
@@ -257,10 +280,14 @@ std::string Server::buildError(int code, const std::string& reason) {
 // ---- teardown + poll-set bookkeeping ---------------------------------------
 
 void Server::closeConnection(int fd) {
-    close(fd);              // 1. close the socket
-    removeFromPoll(fd);     // 2. drop it from the poll set
-    _roles.erase(fd);       // 3. forget its role
-    _conns.erase(fd);       // 4. destroy its Connection (fd already closed)
+    std::map<int, Connection>::iterator c = _conns.find(fd);
+    if (c != _conns.end() && c->second.state == CGI_RUNNING)
+        CgiProcess::cleanup(c->second);   // kill/reap child, close+unregister its pipes
+
+    close(fd);
+    removeFromPoll(fd);
+    _roles.erase(fd);
+    _conns.erase(fd);
     std::cout << "[-] closed fd " << fd << std::endl;
 }
 
@@ -291,5 +318,16 @@ void Server::watchFor(int fd, short events) {
             return;
         }
     }
+}
+
+void Server::addCgiPipe(int pipeFd, int ownerClientFd, short events, FdRole role) {
+    addToPoll(pipeFd, events, role);   // reuse existing: pushes pollfd + sets _roles
+    _cgiOwner[pipeFd] = ownerClientFd;
+}
+
+void Server::removeCgiPipe(int pipeFd) {
+    close(pipeFd);
+    removeFromPoll(pipeFd);   // reuse existing: erases from _pfds + _roles
+    _cgiOwner.erase(pipeFd);
 }
 

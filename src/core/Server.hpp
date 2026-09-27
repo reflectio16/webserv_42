@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:56 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/27 17:05:46 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/27 22:03:40 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,7 @@ public:
 
 private:
     // What kind of fd is this? (client vs a listening socket.) CGI roles later.
-    enum FdRole { LISTENING, CLIENT };
+    enum FdRole { LISTENING, CLIENT, CGI_STDIN, CGI_STDOUT };
 
     Config                      _config;            // kept for later (routing)
     std::vector<struct pollfd>  _pfds;              // the poll set -- each .events IS the mask
@@ -39,7 +39,7 @@ private:
     std::map<int, Connection>   _conns;             // client fd -> its Connection (by value:
                                                     //   map nodes are stable, no manual delete)
     std::map<int, Endpoint>     _listenEndpoints;   // listening fd -> its hos:port
-
+    std::map<int, int>          _cgiOwner;          // cgi pipe fd -> owning client fd
     // ---- startup ----
     void setupListeners();
 
@@ -49,6 +49,8 @@ private:
     void onReadable(Connection& conn);      //recv, then hand to processInput
     void processInput(Connection& conn);   // feed the parser, act on the verdict
     void onWritable(Connection& conn);     // drain outbuf, then keep-alive or close
+    void addCgiPipe(int pipeFd, int ownerClientFd, short events, FdRole role);
+    void removeCgiPipe(int pipeFd);
     void closeConnection(int fd);
 
 
