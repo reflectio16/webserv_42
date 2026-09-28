@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/27 21:56:03 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/27 23:08:23 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/28 15:50:46 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <iostream>
 
 // Split "/var/www/cgi-bin/hello.py" -> dir "/var/www/cgi-bin", base "hello.py".
 static void splitPath(const std::string& full, std::string& dir, std::string& base) {
@@ -124,19 +125,21 @@ bool start(Connection& conn, const Outcome& recipe) {
     // conn.cgiStartMs = nowMs();   // for the timeout (layer 4)
     conn.state         = CGI_RUNNING;
 
-    // Register the pipes in the loop. NOTE: these two calls are on the SERVER,
-    // not here -- start() returns the fds/roles and the Server registers them,
-    // OR start() takes a Server& / callback. See the integration note below.
-    //   server.addCgiPipe(fromChild, conn.fd, POLLIN,  CGI_STDOUT);
-    //   if (!conn.cgiStdin.empty())
-    //       server.addCgiPipe(toChild, conn.fd, POLLOUT, CGI_STDIN);
-    //   else
-    //       { close(toChild); conn.cgiStdinFd = -1; }   // no body -> instant EOF
+    std::cerr << "CGI forked, pid " << pid << "\n";   // TEMP debug -- remove later!!!
+
+    conn.cgiStdin       = recipe.cgiBody;
+    conn.cgiStdinOffset = 0;
+
+    if (conn.cgiStdin.empty()) {
+        close(conn.cgiStdinFd);      // no body -> child reads instant EOF
+        conn.cgiStdinFd = -1;        // signal "no stdin pipe to register"
+    }
 
     return true;
 }
     void onStdinWritable(Connection& conn)  { (void)conn; }
     void onStdoutReadable(Connection& conn) { (void)conn; }
     void cleanup(Connection& conn)          { (void)conn; }
+
 
 }

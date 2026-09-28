@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:37 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/27 22:02:49 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/28 15:59:45 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -199,7 +199,7 @@ void Server::onReadable(Connection& conn) {
             conn.queueResponse(buildError(431, "Request Header Fields Too Large"));
             watchFor(conn.fd, POLLOUT);
             return;
-    }
+        } 
  
     RequestParser::Status st = conn.parser.parse(conn.inbuf, conn.parsePos);
  
@@ -213,12 +213,53 @@ void Server::onReadable(Connection& conn) {
         return;
     }
  
-    // COMPLETE ---------------------------------------------------------------
+   // 3. COMPLETE -- now we have a request; decide what to do with it
+   
     const HttpRequest& req = conn.parser.request();   // read his parsed request
+    
+    std::cerr << "[COMPLETE] method=" << req.method
+              << " path=[" << req.path << "]" << std::endl;   // TEMP
+
+              
     conn.keepAlive = req.keepAlive;                    // honor Connection: close for real
     conn.parsePos  = conn.parser.bytesConsumed();
+
+    // ===== TEMPORARY CGI TEST STUB -- delete when build() lands =====
+
+    std::cerr << "[check] comparing path to /hello.py" << std::endl; // TEMP    
+    if (req.path == "/hello.py") {
+
+        std::cerr << "[CGI] entering CGI branch" << std::endl;        // TEMP
+        
+        Outcome o;
+        o.kind           = Outcome::CGI;
+        o.keepAlive      = req.keepAlive;
+        o.cgiInterpreter = "/usr/bin/python3";
+        o.cgiScriptPath  = "www/cgi-bin/hello.py";
+        o.cgiEnv.push_back("REQUEST_METHOD=" + req.method);
+        o.cgiEnv.push_back("QUERY_STRING=" + req.query);
+        o.cgiBody        = req.body;
+
+        if (!CgiProcess::start(conn, o)) {
+            conn.keepAlive = false;
+            conn.queueResponse(buildError(500, "Internal Server Error"));
+            watchFor(conn.fd, POLLOUT);
+            return;
+        }
+        addCgiPipe(conn.cgiStdoutFd, conn.fd, POLLIN, CGI_STDOUT);
+        if (conn.cgiStdinFd != -1)
+            addCgiPipe(conn.cgiStdinFd, conn.fd, POLLOUT, CGI_STDIN);
+        return;
+    }
+    // ===== END TEMPORARY STUB =====
+
+    // 4. normal (non-CGI) path
+    
     conn.queueResponse(buildResponse(req));            // pass the request in
     watchFor(conn.fd, POLLOUT);
+
+   
+
 }
 
 // ---- write, then keep-alive or close ---------------------------------------
