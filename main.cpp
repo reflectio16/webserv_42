@@ -23,9 +23,10 @@ int main(int argc, char** argv) {
 
 		HttpRequest	request;
 		request.method = "GET";
-		request.path = "/../../etc/passwd";
+		request.path = "/images/cat.jpg";
 		request.version = "HTTP/1.1";
 		request.headers["host"] = "example.com:8080";
+		request.keepAlive = true;
 
 		std::string	host = request.headers["host"];
 

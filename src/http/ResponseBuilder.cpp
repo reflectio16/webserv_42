@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:33:26 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/29 17:40:00 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/29 19:04:39 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -141,6 +141,123 @@ ResponseBuilder::ResourceType	ResponseBuilder::getResourceType(const std::string
 	return (RESOURCE_OTHER);
 }
 
+bool	ResponseBuilder::readFile(const std::string &path, std::string &content) const
+{
+	std::ifstream file(path.c_str(), std::ios::in | std::ios::binary);
+
+	if (!file.is_open())
+		return (false);
+
+	std::ostringstream stream;
+
+	stream << file.rdbuf();
+
+	if (file.bad())
+		return (false);
+
+	content = stream.str();
+
+	return (true);
+}
+
+std::string	ResponseBuilder::getMimeType(
+	const std::string &path) const
+{
+	std::string::size_type dot = path.rfind('.');
+
+	if (dot == std::string::npos)
+		return ("application/octet-stream");
+
+	std::string extension = toLower(path.substr(dot + 1));
+
+	if (extension == "html" || extension == "htm")
+		return ("text/html");
+
+	if (extension == "css")
+		return ("text/css");
+
+	if (extension == "js")
+		return ("application/javascript");
+
+	if (extension == "txt")
+		return ("text/plain");
+
+	if (extension == "jpg" || extension == "jpeg")
+		return ("image/jpeg");
+
+	if (extension == "png")
+		return ("image/png");
+
+	if (extension == "gif")
+		return ("image/gif");
+
+	if (extension == "svg")
+		return ("image/svg+xml");
+
+	if (extension == "ico")
+		return ("image/x-icon");
+
+	if (extension == "json")
+		return ("application/json");
+
+	if (extension == "pdf")
+		return ("application/pdf");
+
+	return ("application/octet-stream");
+}
+
+std::string	ResponseBuilder::sizeToString(std::size_t value) const
+{
+	std::ostringstream	stream;
+
+	stream << value;
+
+	return (stream.str());
+}
+
+std::string	ResponseBuilder::buildStaticFileResponse(const std::string &path, const HttpRequest &request) const
+{
+	std::string	body;
+
+	if (!readFile(path, body))
+		return ("");
+		
+	std::string	response;
+
+	response += "HTTP/1.1 200 OK\r\n";
+	
+	response += "Content-Type: ";
+	response += getMimeType(path);
+	response += "\r\n";
+
+	response += "Content-Length: ";
+	response += sizeToString(body.size());
+	response += "\r\n";
+
+	response += "Connection: ";
+
+	if (request.keepAlive)
+		response += "keep-alive\r\n";
+	else
+		response += "close\r\n";
+
+	response += "\r\n";
+
+	response += body;
+
+	return (response);
+}
+
+std::string	ResponseBuilder::toLower(const std::string &str)
+{
+	std::string result = str;
+
+	for (std::string::size_type i = 0; i != result.size(); ++i)
+	{
+		result[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(result[i])));
+	}
+	return (result);
+}
 
 // Pour tests //
 
@@ -207,8 +324,14 @@ void	ResponseBuilder::debugRouting(
 
 	ResourceType type = getResourceType(path);
 
-	if (type == RESOURCE_FILE)
-		std::cout << "resource : FILE" << std::endl;
+	if (type == RESOURCE_FILE && request.method == "GET")
+	{
+		std::string	response = buildStaticFileResponse(path, request);
+
+		std::cout << "\n--- HTTP RESPONSE ---\n" << std::endl;
+		std::cout << response;
+		std::cout << "\n--- END RESPONSE ---\n" << std::endl;
+	}
 	else if (type == RESOURCE_DIRECTORY)
 		std::cout << "resource : DIRECTORY" << std::endl;
 	else if (type == RESOURCE_NOT_FOUND)

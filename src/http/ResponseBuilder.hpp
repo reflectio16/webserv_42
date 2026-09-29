@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:26:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/29 17:22:32 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/29 18:46:04 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,8 @@
 # include <vector>
 # include <sys/stat.h>
 # include <cerrno>
+# include <fstream>
+# include <sstream>
 
 class ResponseBuilder
 {
@@ -48,6 +50,12 @@ class ResponseBuilder
 
 		ResourceType	getResourceType(const std::string &path) const;
 		
+		bool			readFile(const std::string &path, std::string &content) const;
+		std::string		getMimeType(const std::string &path) const;
+		std::string		sizeToString(std::size_t value) const;
+		std::string		buildStaticFileResponse(const std::string &path, const HttpRequest &request) const;
+		
+		static std::string	toLower(const std::string &str);
 };
 
 #endif
