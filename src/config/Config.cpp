@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/24 16:59:16 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/08 15:31:49 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/29 17:08:49 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -147,10 +147,26 @@ const LocationBlock*	Config::findLocation(const ServerBlock &server, const std::
 	
 	for (std::vector<LocationBlock>::const_iterator it = server.locations.begin(); it != server.locations.end(); ++it)
 	{
-		if (uriPath.compare(0, it->path.size(), it->path) == 0 && it->path.size() > bestLength)
+		const std::string &locationPath = it->path;
+		
+		if (uriPath.compare(0, it->path.size(), it->path) != 0)
+			continue;
+
+		bool validMatch = false;
+
+		if (locationPath == "/")
+			validMatch = true;
+		else if (uriPath.size() == locationPath.size())
+			validMatch = true;
+		else if (locationPath[locationPath.size() - 1] == '/')
+			validMatch = true;
+		else if (uriPath.size() > locationPath.size() && uriPath[locationPath.size()] == '/')
+			validMatch = true;
+		
+		if (validMatch && locationPath.size() > bestLength)
 		{
 			bestMatch = &(*it);
-			bestLength = it->path.size();
+			bestLength = locationPath.size();
 		}
 	}
 	

@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:33:26 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/28 18:20:53 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/29 17:40:00 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,30 +36,33 @@ std::string		ResponseBuilder::getEffectiveRoot(const ServerBlock &server, const 
 	return (server.root);
 }
 
-std::string		ResponseBuilder::buildFilePath(const HttpRequest &request, const ServerBlock &server, const LocationBlock *location) const
+std::string	ResponseBuilder::joinPaths(const std::string &root, const std::string &suffix) const
 {
-	std::string	root = getEffectiveRoot(server, location);
-	std::string	normalized;
-
 	if (root.empty())
 		return ("");
 
-	if (!normalizePath(request.path, normalized))
-		return ("");
+	if (suffix.empty())
+		return (root);
+
+	if (root[root.size() - 1] == '/' && suffix[0] == '/')
+		return (root + suffix[1]);
 	
-	if (root[root.size() - 1] == '/'
-		&& normalized[0] == '/')
+	if (root[root.size() - 1] != '/' && suffix[0] != '/')
+		return (root + "/" + suffix);
+
+	return (root + suffix);
+}
+
+std::string		ResponseBuilder::buildFilePath(const std::string &normalizedPath, const ServerBlock &server, const LocationBlock *location) const
+{
+	if (location != NULL && !location->root.empty())
 	{
-		return (root + normalized.substr(1));
+		std::string suffix = normalizedPath.substr(location->path.size());
+		
+		return (joinPaths(location->root, suffix));
 	}
 
-	if (root[root.size() - 1] != '/'
-		&& normalized[0] != '/')
-	{
-		return (root + "/" + normalized);
-	}
-
-	return (root + normalized);
+	return (joinPaths(server.root, normalizedPath));
 }
 
 bool	ResponseBuilder::normalizePath(const std::string &path, std::string &normalized) const
@@ -166,14 +169,22 @@ void	ResponseBuilder::debugRouting(
 		return ;
 	}
 
+	std::string	normalizedPath;
+
+	if (!normalizePath(request.path, normalizedPath))
+	{
+		std::cout << "INVALID PATH" << std::endl;
+		return ;
+	}
+	
 	const LocationBlock *location =
-		_config.findLocation(*server, request.path);
+		_config.findLocation(*server, normalizedPath);
 
 	std::string root =
 		getEffectiveRoot(*server, location);
 
 	std::string path =
-		buildFilePath(request, *server, location);
+		buildFilePath(normalizedPath, *server, location);
 
 	std::cout << "Host     : " << host << std::endl;
 	std::cout << "URI      : " << request.path << std::endl;
