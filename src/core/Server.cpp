@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:37 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/29 15:56:39 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/29 16:48:58 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -171,6 +171,7 @@ void Server::acceptClient(int listenFd) {
         close(clientFd);
         return;
     }
+    fcntl(clientFd, F_SETFD, FD_CLOEXEC);   // don't leak listening sockets into CGI children
 
     Connection conn(clientFd);
     std::map<int, Endpoint>::iterator ep = _listenEndpoints.find(listenFd);

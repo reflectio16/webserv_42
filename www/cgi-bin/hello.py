@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import os
 import sys
+import time
+time.sleep(8)
 
 # Read the request body from stdin (the server feeds it through the pipe).
 body_in = sys.stdin.read()

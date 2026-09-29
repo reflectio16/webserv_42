@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/26 17:29:41 by meelma            #+#    #+#             */
-/*   Updated: 2026/08/26 17:29:44 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/29 16:48:16 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -95,6 +95,7 @@ int makeListeningSocket(const std::string& host, int port)
         close(fd);
         return -1;
     }
+    fcntl(fd, F_SETFD, FD_CLOEXEC);   // don't leak listening sockets into CGI children
 
     return fd;
 }
