@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/25 17:13:30 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/27 17:09:20 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/29 15:38:09 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,6 +59,8 @@ struct Connection {
     std::size_t   cgiStdinOffset;
     std::string   cgiBuf;
     long          cgiStartMs;
+    bool          cgiDoneWritingStdin;   // handler sets -> Server closes stdin pipe
+    bool          cgiOutputComplete;     // handler sets -> Server finalizes response
 
     explicit Connection(int clientFd);
 

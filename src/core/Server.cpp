@@ -6,14 +6,13 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:37 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/28 15:59:45 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/29 15:56:39 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server.hpp"
 #include "ListeningSocket.hpp"
 #include "CgiProcess.hpp"
-
 #include <sys/socket.h>   // accept, recv
 #include <sys/types.h>    // ssize_t
 #include <unistd.h>       // close
@@ -114,19 +113,28 @@ void Server::dispatch(int fd, short revents) {
             std::map<int, int>::iterator o = _cgiOwner.find(fd);
             if (o != _cgiOwner.end()) {
                 std::map<int, Connection>::iterator c = _conns.find(o->second);
-                if (c != _conns.end())
+                if (c != _conns.end()) {
                     CgiProcess::onStdinWritable(c->second);
+                    // flag check: body fully sent (or broke) -> close+unregister stdin
+                    if (c->second.cgiDoneWritingStdin && c->second.cgiStdinFd != -1) {
+                        removeCgiPipe(c->second.cgiStdinFd);   // close + unpoll + _cgiOwner.erase
+                        c->second.cgiStdinFd = -1;
+                    }
+                }
             }
         }
         return;
     }
     if (it->second == CGI_STDOUT) {
-        if (revents & (POLLIN | POLLHUP)) {   // POLLHUP: child closed stdout / exited
+        if (revents & (POLLIN | POLLHUP)) {
             std::map<int, int>::iterator o = _cgiOwner.find(fd);
             if (o != _cgiOwner.end()) {
                 std::map<int, Connection>::iterator c = _conns.find(o->second);
-                if (c != _conns.end())
+                if (c != _conns.end()) {
                     CgiProcess::onStdoutReadable(c->second);
+                    if (c->second.cgiOutputComplete)
+                        finishCgi(c->second);   // reap, finalize, arm write path
+                }
             }
         }
         return;
@@ -371,4 +379,41 @@ void Server::removeCgiPipe(int pipeFd) {
     removeFromPoll(pipeFd);   // reuse existing: erases from _pfds + _roles
     _cgiOwner.erase(pipeFd);
 }
+
+// TEMP -- until François's ResponseBuilder::finalizeCgi lands.
+// CGI output is "headers\r\n\r\nbody"; a real finalize parses the CGI headers.
+// This crude version just wraps whatever the script printed as the body.
+static std::string tempFinalizeCgi(const std::string& cgiOut, bool keepAlive) {
+    std::ostringstream oss;
+    oss << "HTTP/1.1 200 OK\r\n"
+        << "Content-Length: " << cgiOut.size() << "\r\n";
+    if (!keepAlive) oss << "Connection: close\r\n";
+    oss << "\r\n" << cgiOut;
+    return oss.str();
+}
+
+void Server::finishCgi(Connection& conn) {
+    // stdout pipe is done -> stop watching it
+    if (conn.cgiStdoutFd != -1) {
+        removeCgiPipe(conn.cgiStdoutFd);
+        conn.cgiStdoutFd = -1;
+    }
+    // if stdin pipe is somehow still open (e.g. child died early), drop it too
+    if (conn.cgiStdinFd != -1) {
+        removeCgiPipe(conn.cgiStdinFd);
+        conn.cgiStdinFd = -1;
+    }
+    CgiProcess::cleanup(conn);   // reap the child (waitpid) -- kills the zombie
+
+    // CGI stdout -> real HTTP response.  (Until François's finalizeCgi exists,
+    // use a temporary wrapper -- see note below.)
+
+    std::string resp = tempFinalizeCgi(conn.cgiBuf, conn.keepAlive); // will remove!!
+    //std::string resp = ResponseBuilder::finalizeCgi(conn.cgiBuf, conn.keepAlive);
+    conn.queueResponse(resp);
+    conn.state = WRITING_RESPONSE;
+    watchFor(conn.fd, POLLOUT);
+}
+
+
 

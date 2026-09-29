@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/27 21:56:03 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/28 15:50:46 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/29 15:32:20 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,10 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <sys/wait.h>   // waitpid, WNOHANG
+#include <signal.h>     // kill, SIGKILL
+//   #include <cstring>      // (if needed)
+
 
 // Split "/var/www/cgi-bin/hello.py" -> dir "/var/www/cgi-bin", base "hello.py".
 static void splitPath(const std::string& full, std::string& dir, std::string& base) {
@@ -125,21 +129,69 @@ bool start(Connection& conn, const Outcome& recipe) {
     // conn.cgiStartMs = nowMs();   // for the timeout (layer 4)
     conn.state         = CGI_RUNNING;
 
-    std::cerr << "CGI forked, pid " << pid << "\n";   // TEMP debug -- remove later!!!
-
-    conn.cgiStdin       = recipe.cgiBody;
-    conn.cgiStdinOffset = 0;
-
     if (conn.cgiStdin.empty()) {
         close(conn.cgiStdinFd);      // no body -> child reads instant EOF
         conn.cgiStdinFd = -1;        // signal "no stdin pipe to register"
     }
 
+    std::cerr << "CGI forked, pid " << pid << "\n";   // TEMP debug -- remove later!!!
     return true;
 }
-    void onStdinWritable(Connection& conn)  { (void)conn; }
-    void onStdoutReadable(Connection& conn) { (void)conn; }
-    void cleanup(Connection& conn)          { (void)conn; }
+
+void onStdinWritable(Connection& conn) {
+    std::size_t remaining = conn.cgiStdin.size() - conn.cgiStdinOffset;
+    ssize_t n = write(conn.cgiStdinFd,
+                      conn.cgiStdin.data() + conn.cgiStdinOffset,
+                      remaining);
+ 
+    if (n < 0) {
+        // child gone / pipe broke -> stop feeding; close the write end.
+        // (SIGPIPE is ignored process-wide, so write just returns -1 here.)
+        conn.cgiDoneWritingStdin = true;   // signal: unregister + close (Server side)
+        return;
+    }
+    conn.cgiStdinOffset += static_cast<std::size_t>(n);
+ 
+    if (conn.cgiStdinOffset >= conn.cgiStdin.size())
+        conn.cgiDoneWritingStdin = true;   // whole body sent -> close stdin (Server side)
+}
+ 
+// Drain the child's stdout into cgiBuf. On EOF (read returns 0), the script is
+// done: reap it, and the response is ready to be finalized.
+void onStdoutReadable(Connection& conn) {
+    char buf[4096];
+    ssize_t n = read(conn.cgiStdoutFd, buf, sizeof(buf));
+ 
+    if (n > 0) {
+        conn.cgiBuf.append(buf, static_cast<std::size_t>(n));
+        return;                            // more may come; wait for next POLLIN
+    }
+ 
+    // n == 0 (EOF) or n < 0 (error) -> the child is finished producing output.
+    conn.cgiOutputComplete = true;         // signal: reap + finalize (Server side)
+}
+ 
+// Kill (if still alive) and reap the child, close the pipes. Called on normal
+// completion, on timeout, and from closeConnection if a CGI was mid-flight.
+void cleanup(Connection& conn) {
+    if (conn.cgiPid > 0) {
+        int status;
+        // Reap without blocking; if it hasn't exited, kill it then reap.
+        if (waitpid(conn.cgiPid, &status, WNOHANG) == 0) {
+            kill(conn.cgiPid, SIGKILL);
+            waitpid(conn.cgiPid, &status, 0);
+        }
+        conn.cgiPid = -1;
+    }
+    if (conn.cgiStdinFd != -1) {
+        close(conn.cgiStdinFd);
+        conn.cgiStdinFd = -1;
+    }
+    if (conn.cgiStdoutFd != -1) {
+        close(conn.cgiStdoutFd);
+        conn.cgiStdoutFd = -1;
+    }
+}
 
 
 }

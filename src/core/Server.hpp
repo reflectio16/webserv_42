@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:56 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/27 22:03:40 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/29 15:46:40 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,6 +63,7 @@ private:
     void addToPoll(int fd, short events, FdRole role);
     void removeFromPoll(int fd);
     void watchFor(int fd, short events);   // used once the write path exists
+    void finishCgi(Connection& conn);
 
     // non-copyable: server owns fds, must not be duplicated
     // we declare them private and never define them
