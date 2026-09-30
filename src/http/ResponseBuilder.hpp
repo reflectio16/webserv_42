@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:26:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/29 18:46:04 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/30 16:52:18 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,7 @@
 # include <cerrno>
 # include <fstream>
 # include <sstream>
+# include <dirent.h>
 
 class ResponseBuilder
 {
@@ -53,9 +54,14 @@ class ResponseBuilder
 		bool			readFile(const std::string &path, std::string &content) const;
 		std::string		getMimeType(const std::string &path) const;
 		std::string		sizeToString(std::size_t value) const;
+		std::string		findIndexFile(const std::string &directoryPath, const LocationBlock *location) const;
+		bool			buildAutoIndexBody(const std::string &directoryPath, const std::string &uriPath, std::string &body) const;
+		
+		std::string		buildResponse(int statusCode, const std::string &reason, const std::string &contentType, const std::string &body, bool keepAlive) const;
 		std::string		buildStaticFileResponse(const std::string &path, const HttpRequest &request) const;
+		std::string		buildAutoindexResponse(const std::string &directoryPath, const std::string &uriPath, const HttpRequest &request) const;
 		
 		static std::string	toLower(const std::string &str);
-};
+	};
 
 #endif

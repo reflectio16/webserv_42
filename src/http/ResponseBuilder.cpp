@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:33:26 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/29 19:04:39 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/30 17:04:29 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -215,6 +215,35 @@ std::string	ResponseBuilder::sizeToString(std::size_t value) const
 	return (stream.str());
 }
 
+std::string		ResponseBuilder::buildResponse(int statusCode, const std::string &reason, const std::string &contentType, const std::string &body, bool keepAlive) const
+{
+	std::ostringstream	response;
+
+	response << "HTTP/1.1 "
+			 << statusCode
+			 << " "
+			 << reason
+			 << "\r\n";
+
+	response << "Content-Type: "
+			 << contentType
+			 << "\r\n";
+
+	response << "Content-Length: "
+			 << body.size()
+			 << "\r\n";
+			 
+	response << "Connection: "
+			 << (keepAlive ? "keep-alive" : "close")
+			 << "\r\n";
+	
+	response << "\r\n";
+	
+	response << body;
+
+	return (response.str());
+}
+
 std::string	ResponseBuilder::buildStaticFileResponse(const std::string &path, const HttpRequest &request) const
 {
 	std::string	body;
@@ -222,30 +251,84 @@ std::string	ResponseBuilder::buildStaticFileResponse(const std::string &path, co
 	if (!readFile(path, body))
 		return ("");
 		
-	std::string	response;
+	return (buildResponse(200, "OK", getMimeType(path), body, request.keepAlive));
+}
 
-	response += "HTTP/1.1 200 OK\r\n";
+std::string	ResponseBuilder::buildAutoindexResponse(const std::string &directoryPath, const std::string &uriPath, const HttpRequest &request) const
+{
+	std::string	body;
+
+	if (!buildAutoIndexBody(directoryPath, uriPath, body))
+		return ("");
+
+	return (buildResponse(200, "OK", "text/html", body, request.keepAlive));
+}	
+
+std::string	ResponseBuilder::findIndexFile(const std::string &directoryPath, const LocationBlock *location) const
+{
+	if (location == NULL || location->index.empty())
+		return ("");
+
+	std::string	indexPath = joinPaths(directoryPath, location->index);
+
+	if (getResourceType(indexPath) != RESOURCE_FILE)
+		return ("");
+
+	return (indexPath);
+}
+
+bool	ResponseBuilder::buildAutoIndexBody(const std::string &directoryPath, const std::string &uriPath, std::string &body) const
+{
+	DIR	*dir = opendir(directoryPath.c_str());
 	
-	response += "Content-Type: ";
-	response += getMimeType(path);
-	response += "\r\n";
+	if (dir == NULL)
+		return (false);
 
-	response += "Content-Length: ";
-	response += sizeToString(body.size());
-	response += "\r\n";
+	std::ostringstream	html;
+	
+	html << "<html>\n";
+	html << "<head><title>Index of "
+		 << uriPath
+		 << "</title></head>\n";
+		 
+	html << "<body>\n";
+	html << "<h1>Index of "
+		 << uriPath
+		 << "</h1>\n";
 
-	response += "Connection: ";
+	html << "<ul>\n";
 
-	if (request.keepAlive)
-		response += "keep-alive\r\n";
-	else
-		response += "close\r\n";
+	struct dirent *entry;
 
-	response += "\r\n";
+	while ((entry = readdir(dir)) != NULL)
+	{
+		std::string	name = entry->d_name;
 
-	response += body;
+		if (name == "." || name == "..")
+			continue;
 
-	return (response);
+		html << "<li><a href=\"";
+
+		if (uriPath.empty() || uriPath[uriPath.size() - 1] != '/')
+			html << uriPath << "/";
+		else
+			html << uriPath;
+
+		html << name
+			 << "\">"
+			 << name
+			 << "</a></li>\n";
+	}
+	
+	html << "</ul>\n";
+	html << "</body>\n";
+	html << "</html>\n";
+
+	closedir(dir);
+
+	body = html.str();
+
+	return (true);
 }
 
 std::string	ResponseBuilder::toLower(const std::string &str)
@@ -333,7 +416,35 @@ void	ResponseBuilder::debugRouting(
 		std::cout << "\n--- END RESPONSE ---\n" << std::endl;
 	}
 	else if (type == RESOURCE_DIRECTORY)
-		std::cout << "resource : DIRECTORY" << std::endl;
+	{
+		std::string	indexPath = findIndexFile(path, location);
+
+		if (!indexPath.empty())
+		{
+			std::cout	<< "index    : "
+						<< indexPath
+						<<std::endl;
+						
+			std::string	response = buildStaticFileResponse(indexPath, request);
+
+			std::cout << "\n--- HTTP RESPONSE ---\n" << std::endl;
+			std::cout << response;
+			std::cout << "\n--- END RESPONSE ---\n" << std::endl;
+			return ;
+		}
+		if (location != NULL && location->autoindex)
+		{
+			std::string response = buildAutoindexResponse(path, normalizedPath, request);
+
+			std::cout << "\n--- HTTP RESPONSE ---\n" << std::endl;
+			std::cout << response;
+			std::cout << "\n--- END RESPONSE ---\n" << std::endl;
+			return ;
+		}
+		
+		std::cout << "DIRECTORY FORBIDDEN" << std::endl;
+		return ;
+	}
 	else if (type == RESOURCE_NOT_FOUND)
 		std::cout << "resource : NOT FOUND" << std::endl;
 	else if (type == RESOURCE_OTHER)
