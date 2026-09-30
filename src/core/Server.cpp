@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:37 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/29 16:48:58 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/30 13:33:38 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,14 +28,17 @@
 // Guard so a client whose headers never end can't grow inbuf without bound.
 static const std::size_t MAX_REQUEST_BYTES = 64 * 1024;
 
+static const int  POLL_TIMEOUT_MS = 1000;    // loop wakes at least once a second
+static const long CGI_TIMEOUT_MS  = 10000;   // kill a CGI after 10s
+
 Server::Server(const std::string& configPath)
-    : _config(configPath)      // Config parses the file here; throws on bad config
+    :  _config(configPath),      // Config parses the file here; throws on bad config
+        _elapsedMs(0)
 {
     // A client or CGI child that vanishes mid-write would raise SIGPIPE, whose
     // default action KILLS the process. Ignore it and handle the failed write
     // via send()'s return value instead. One line, saves the whole server.
     signal(SIGPIPE, SIG_IGN);
-
     setupListeners();
 }
 
@@ -81,20 +84,19 @@ void Server::setupListeners() {
 
 void Server::run() {
     while (true) {
-        int ready = poll(&_pfds[0], _pfds.size(), -1);
-        if (ready <= 0)
-            continue;   // interrupted or nothing ready; robust handling comes later
+        int ready = poll(&_pfds[0], _pfds.size(), POLL_TIMEOUT_MS);
+        _elapsedMs += POLL_TIMEOUT_MS;        // approximate clock
 
-        // Snapshot the ready fds BEFORE dispatching. accept/close mutate _pfds
-        // (adding/removing entries), so iterating _pfds directly while mutating
-        // it would skip or double-process. Copy (fd, revents), then act.
-        std::vector<std::pair<int, short> > readyFds;
-        for (size_t i = 0; i < _pfds.size(); ++i)
-            if (_pfds[i].revents != 0)
-                readyFds.push_back(std::make_pair(_pfds[i].fd, _pfds[i].revents));
+        if (ready > 0) {
+            std::vector<std::pair<int, short> > readyFds;
+            for (size_t i = 0; i < _pfds.size(); ++i)
+                if (_pfds[i].revents != 0)
+                    readyFds.push_back(std::make_pair(_pfds[i].fd, _pfds[i].revents));
+            for (size_t i = 0; i < readyFds.size(); ++i)
+                dispatch(readyFds[i].first, readyFds[i].second);
+        }
 
-        for (size_t i = 0; i < readyFds.size(); ++i)
-            dispatch(readyFds[i].first, readyFds[i].second);
+        checkCgiTimeouts();                   // runaway-script guard
     }
 }
 
@@ -248,6 +250,7 @@ void Server::onReadable(Connection& conn) {
         o.cgiEnv.push_back("REQUEST_METHOD=" + req.method);
         o.cgiEnv.push_back("QUERY_STRING=" + req.query);
         o.cgiBody        = req.body;
+        conn.cgiStartMs = _elapsedMs;         // stamp for the timeout sweep
 
         if (!CgiProcess::start(conn, o)) {
             conn.keepAlive = false;
@@ -412,6 +415,32 @@ void Server::finishCgi(Connection& conn) {
     std::string resp = tempFinalizeCgi(conn.cgiBuf, conn.keepAlive); // will remove!!
     //std::string resp = ResponseBuilder::finalizeCgi(conn.cgiBuf, conn.keepAlive);
     conn.queueResponse(resp);
+    conn.state = WRITING_RESPONSE;
+    watchFor(conn.fd, POLLOUT);
+}
+
+void Server::checkCgiTimeouts() {
+    std::map<int, Connection>::iterator it = _conns.begin();
+    while (it != _conns.end()) {
+        Connection& conn = it->second;
+        ++it;   // advance BEFORE possibly mutating _conns (timeoutCgi may queue a response,
+                //   but does NOT erase the connection, so this is belt-and-suspenders)
+
+        if (conn.state == CGI_RUNNING &&
+            _elapsedMs - conn.cgiStartMs > CGI_TIMEOUT_MS) {
+            timeoutCgi(conn);
+        }
+    }
+}
+
+void Server::timeoutCgi(Connection& conn) {
+    // tear down the runaway child + its pipes (reuses cleanup: kill + waitpid + close)
+    if (conn.cgiStdoutFd != -1) { removeCgiPipe(conn.cgiStdoutFd); conn.cgiStdoutFd = -1; }
+    if (conn.cgiStdinFd  != -1) { removeCgiPipe(conn.cgiStdinFd);  conn.cgiStdinFd  = -1; }
+    CgiProcess::cleanup(conn);                 // kill(SIGKILL) + reap
+
+    conn.keepAlive = false;                    // a timed-out request closes
+    conn.queueResponse(buildError(504, "Gateway Timeout"));
     conn.state = WRITING_RESPONSE;
     watchFor(conn.fd, POLLOUT);
 }

@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/27 21:56:03 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/29 15:32:20 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/30 13:33:20 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -126,7 +126,6 @@ bool start(Connection& conn, const Outcome& recipe) {
     conn.cgiStdin      = recipe.cgiBody;
     conn.cgiStdinOffset = 0;
     conn.cgiBuf.clear();
-    // conn.cgiStartMs = nowMs();   // for the timeout (layer 4)
     conn.state         = CGI_RUNNING;
 
     if (conn.cgiStdin.empty()) {

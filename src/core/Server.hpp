@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:56 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/29 15:46:40 by meelma           ###   ########.fr       */
+/*   Updated: 2026/09/30 13:34:05 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,9 @@ private:
                                                     //   map nodes are stable, no manual delete)
     std::map<int, Endpoint>     _listenEndpoints;   // listening fd -> its hos:port
     std::map<int, int>          _cgiOwner;          // cgi pipe fd -> owning client fd
+
+    long _elapsedMs;                 // ms since start, derived from poll timeout
+    
     // ---- startup ----
     void setupListeners();
 
@@ -52,7 +55,8 @@ private:
     void addCgiPipe(int pipeFd, int ownerClientFd, short events, FdRole role);
     void removeCgiPipe(int pipeFd);
     void closeConnection(int fd);
-
+    void checkCgiTimeouts();
+    void timeoutCgi(Connection& conn);
 
     // response building -- TEMPORARY placeholders for the HTTP-side ResponseBuilder
     std::string buildResponse(const HttpRequest& req);
