@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:33:26 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/30 17:04:29 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/01 16:14:41 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -215,55 +215,6 @@ std::string	ResponseBuilder::sizeToString(std::size_t value) const
 	return (stream.str());
 }
 
-std::string		ResponseBuilder::buildResponse(int statusCode, const std::string &reason, const std::string &contentType, const std::string &body, bool keepAlive) const
-{
-	std::ostringstream	response;
-
-	response << "HTTP/1.1 "
-			 << statusCode
-			 << " "
-			 << reason
-			 << "\r\n";
-
-	response << "Content-Type: "
-			 << contentType
-			 << "\r\n";
-
-	response << "Content-Length: "
-			 << body.size()
-			 << "\r\n";
-			 
-	response << "Connection: "
-			 << (keepAlive ? "keep-alive" : "close")
-			 << "\r\n";
-	
-	response << "\r\n";
-	
-	response << body;
-
-	return (response.str());
-}
-
-std::string	ResponseBuilder::buildStaticFileResponse(const std::string &path, const HttpRequest &request) const
-{
-	std::string	body;
-
-	if (!readFile(path, body))
-		return ("");
-		
-	return (buildResponse(200, "OK", getMimeType(path), body, request.keepAlive));
-}
-
-std::string	ResponseBuilder::buildAutoindexResponse(const std::string &directoryPath, const std::string &uriPath, const HttpRequest &request) const
-{
-	std::string	body;
-
-	if (!buildAutoIndexBody(directoryPath, uriPath, body))
-		return ("");
-
-	return (buildResponse(200, "OK", "text/html", body, request.keepAlive));
-}	
-
 std::string	ResponseBuilder::findIndexFile(const std::string &directoryPath, const LocationBlock *location) const
 {
 	if (location == NULL || location->index.empty())
@@ -331,6 +282,65 @@ bool	ResponseBuilder::buildAutoIndexBody(const std::string &directoryPath, const
 	return (true);
 }
 
+std::string	ResponseBuilder::getReasonPhrase(int statusCode) const
+{
+	switch(statusCode)
+	{
+		case 400:
+			return ("Bad Request");
+		case 403:
+			return ("Forbidden");
+		case 404:
+			return ("Not Found");
+		case 405:
+			return ("Method Not Allowed");
+		case 413:
+			return ("Payload Too Large");
+		case 500:
+			return ("Internal Server Error");
+		case 501:
+			return ("Not Implemented");
+		default:
+			return ("Error");
+	}
+}
+
+std::string	ResponseBuilder::buildDefaultErrorBody(int statusCode) const
+{
+	std::ostringstream body;
+
+	std::string	reason = getReasonPhrase(statusCode);
+
+	body << "<html>\n";
+	body << "<head><title>"
+		 << statusCode
+		 << " "
+		 << reason
+		 << "</title></head>\n";
+
+	body << "<body>\n";
+	body << "<h1>"
+		 << statusCode
+		 << " "
+		 << reason
+		 << "</h1>\n";
+
+	body << "</body>\n";
+	body << "</html>\n";
+
+	return (body.str());
+}
+
+std::string	ResponseBuilder::getCustomErrorPagePath(const ServerBlock &server, int statusCode) const
+{
+	std::map<int, std::string>::const_iterator it = server.errorPages.find(statusCode);
+	
+	if (it == server.errorPages.end())
+		return ("");
+
+	return (joinPaths(server.root, it->second));
+}
+
 std::string	ResponseBuilder::toLower(const std::string &str)
 {
 	std::string result = str;
@@ -340,6 +350,77 @@ std::string	ResponseBuilder::toLower(const std::string &str)
 		result[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(result[i])));
 	}
 	return (result);
+}
+
+std::string		ResponseBuilder::buildResponse(int statusCode, const std::string &reason, const std::string &contentType, const std::string &body, bool keepAlive) const
+{
+	std::ostringstream	response;
+
+	response << "HTTP/1.1 "
+			 << statusCode
+			 << " "
+			 << reason
+			 << "\r\n";
+
+	response << "Content-Type: "
+			 << contentType
+			 << "\r\n";
+
+	response << "Content-Length: "
+			 << body.size()
+			 << "\r\n";
+			 
+	response << "Connection: "
+			 << (keepAlive ? "keep-alive" : "close")
+			 << "\r\n";
+	
+	response << "\r\n";
+	
+	response << body;
+
+	return (response.str());
+}
+
+std::string	ResponseBuilder::buildStaticFileResponse(const std::string &path, const HttpRequest &request) const
+{
+	std::string	body;
+
+	if (!readFile(path, body))
+		return ("");
+		
+	return (buildResponse(200, "OK", getMimeType(path), body, request.keepAlive));
+}
+
+std::string	ResponseBuilder::buildAutoindexResponse(const std::string &directoryPath, const std::string &uriPath, const HttpRequest &request) const
+{
+	std::string	body;
+
+	if (!buildAutoIndexBody(directoryPath, uriPath, body))
+		return ("");
+
+	return (buildResponse(200, "OK", "text/html", body, request.keepAlive));
+}
+
+std::string	ResponseBuilder::buildErrorResponse(int statusCode, const ServerBlock &server, const HttpRequest &request) const
+{	
+	std::string body = buildDefaultErrorBody(statusCode);
+	std::string	contentType = "text/html";
+	
+	std::string errorPath = getCustomErrorPagePath(server, statusCode);
+	
+	if (!errorPath.empty() && getResourceType(errorPath) == RESOURCE_FILE)
+	{
+		if (!readFile(errorPath, body))
+			body = buildDefaultErrorBody(statusCode);
+		else
+			contentType = getMimeType(errorPath);
+	}
+	else
+	{
+		body = buildDefaultErrorBody(statusCode);
+	}
+	
+	return (buildResponse(statusCode, getReasonPhrase(statusCode), "text/html", body, request.keepAlive));
 }
 
 // Pour tests //
@@ -442,13 +523,25 @@ void	ResponseBuilder::debugRouting(
 			return ;
 		}
 		
-		std::cout << "DIRECTORY FORBIDDEN" << std::endl;
+		std::string	response = buildErrorResponse(403, *server, request);
+		
+		std::cout << response << std::endl;
 		return ;
 	}
 	else if (type == RESOURCE_NOT_FOUND)
-		std::cout << "resource : NOT FOUND" << std::endl;
+	{
+		std::string	response = buildErrorResponse(404, *server, request);
+		
+		std::cout << response << std::endl;
+		return ;
+	}
 	else if (type == RESOURCE_OTHER)
 		std::cout << "resource : OTHER" << std::endl;
-	else
-		std::cout << "resource : ERROR" << std::endl;
+	else if (type == RESOURCE_ERROR)
+	{
+		std::string	response = buildErrorResponse(500, *server, request);
+		
+		std::cout << response << std::endl;
+		return ;
+	}
 }

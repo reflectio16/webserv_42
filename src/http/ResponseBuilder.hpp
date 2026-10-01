@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:26:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/30 16:52:18 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/01 15:56:57 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,10 +56,14 @@ class ResponseBuilder
 		std::string		sizeToString(std::size_t value) const;
 		std::string		findIndexFile(const std::string &directoryPath, const LocationBlock *location) const;
 		bool			buildAutoIndexBody(const std::string &directoryPath, const std::string &uriPath, std::string &body) const;
+		std::string		getReasonPhrase(int statusCode) const;
+		std::string		buildDefaultErrorBody(int statusCode) const;
+		std::string		getCustomErrorPagePath(const ServerBlock &server, int statusCode) const;
 		
 		std::string		buildResponse(int statusCode, const std::string &reason, const std::string &contentType, const std::string &body, bool keepAlive) const;
 		std::string		buildStaticFileResponse(const std::string &path, const HttpRequest &request) const;
 		std::string		buildAutoindexResponse(const std::string &directoryPath, const std::string &uriPath, const HttpRequest &request) const;
+		std::string		buildErrorResponse(int statusCode, const ServerBlock &server, const HttpRequest &request) const;
 		
 		static std::string	toLower(const std::string &str);
 	};
