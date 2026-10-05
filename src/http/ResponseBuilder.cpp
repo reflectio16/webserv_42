@@ -6,13 +6,17 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:33:26 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/10/05 15:25:54 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/05 17:32:40 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ResponseBuilder.hpp"
 #include <iostream>
 #include <cstdio>
+#include <fcntl.h>
+#include <unistd.h>
+#include <cerrno>
+#include <cstring>
 
 ResponseBuilder::ResponseBuilder(const Config &config) : _config(config)
 {
@@ -287,6 +291,8 @@ std::string	ResponseBuilder::getReasonPhrase(int statusCode) const
 {
 	switch(statusCode)
 	{
+		case 201:
+			return ("Created");
 		case 204:
 			return ("No Content");
 			
@@ -392,6 +398,34 @@ std::string	ResponseBuilder::toLower(const std::string &str)
 		result[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(result[i])));
 	}
 	return (result);
+}
+
+bool	ResponseBuilder::writeFile(const std::string &path, const std::string &body) const
+{
+	int	fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+	if (fd < 0)
+		return (false);
+
+	std::size_t	totalWritten = 0;
+	
+	while (totalWritten < body.size())
+	{
+		ssize_t	written = write(fd, body.data() + totalWritten, body.size() - totalWritten);
+
+		if (written <= 0)
+		{
+			close(fd);
+			return (false);
+		}
+		
+		totalWritten += static_cast<std::size_t>(written);
+	}
+	
+	if (close(fd) != 0)
+		return (false);
+		
+	return (true);
 }
 
 std::string		ResponseBuilder::buildResponse(int statusCode, const std::string &reason, const std::string &contentType, const std::string &body, bool keepAlive, const std::string &extraHeaders) const
@@ -547,6 +581,59 @@ std::string	ResponseBuilder::buildDeleteResponse(const std::string &path, const 
 	return (buildNoContentResponse(request));
 }
 
+std::string	ResponseBuilder::buildUploadPath(const std::string &normalizedPath, const LocationBlock &location) const
+{
+	if (location.uploadDir.empty())
+		return ("");
+
+	if (normalizedPath.size() < location.path.size())
+		return ("");
+
+	std::string suffix = normalizedPath.substr(location.path.size());
+
+	if (suffix.empty() || suffix == "/")
+		return ("");
+
+	if (suffix[suffix.size() - 1] == '/')
+		return ("");
+
+	return (joinPaths(location.uploadDir, suffix));
+}
+
+std::string	ResponseBuilder::buildUploadResponse(const std::string &normalizedPath, const LocationBlock &location, const ServerBlock &server, const HttpRequest &request) const
+{
+	if (location.uploadDir.empty())
+		return (buildErrorResponse(403, server, request));
+	
+	if (getResourceType(location.uploadDir) != RESOURCE_DIRECTORY)
+	{
+		return (buildErrorResponse(500, server, request));
+	}
+
+	std::string uploadPath = buildUploadPath(normalizedPath, location);
+	
+	if (uploadPath.empty())
+		return (buildErrorResponse(400, server, request));
+		
+	ResourceType	targetType = getResourceType(uploadPath);
+	
+	if (targetType == RESOURCE_DIRECTORY || targetType == RESOURCE_OTHER)
+		return (buildErrorResponse(403, server, request));
+		
+	if (targetType == RESOURCE_ERROR)
+		return (buildErrorResponse(500, server, request));
+	
+	bool alreadyExist = (targetType == RESOURCE_FILE);
+	
+	if (!writeFile(uploadPath, request.body))
+		return (buildErrorResponse(500, server, request));
+
+	if (alreadyExist)
+		return(buildNoContentResponse(request));
+		
+	return (buildResponse(201, getReasonPhrase(201), "text/plain", "", request.keepAlive));
+}
+
 // Pour tests //
 
 void	ResponseBuilder::debugRouting(
@@ -645,6 +732,44 @@ void	ResponseBuilder::debugRouting(
 		std::string response =
 			buildDeleteResponse(
 				path,
+				*server,
+				request);
+
+		std::cout << "\n--- HTTP RESPONSE ---\n";
+		std::cout << response;
+		std::cout << "\n--- END RESPONSE ---\n";
+
+		return ;
+	}
+
+	if (request.method == "POST")
+	{
+		if (location == NULL)
+		{
+			std::cout << buildErrorResponse(
+				404, *server, request);
+
+			return ;
+		}
+
+		if (server->clientMaxBodySize != 0
+			&& request.body.size() > server->clientMaxBodySize)
+		{
+			std::string	response = buildErrorResponse(
+				413, *server, request);
+
+			
+			std::cout << "\n--- HTTP RESPONSE ---\n";
+			std::cout << response;
+			std::cout << "\n--- END RESPONSE ---\n";
+			
+			return ;
+		}
+
+		std::string response =
+			buildUploadResponse(
+				normalizedPath,
+				*location,
 				*server,
 				request);
 

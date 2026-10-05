@@ -22,10 +22,11 @@ int main(int argc, char** argv) {
 		endpoint.port = 8080;
 
 		HttpRequest	request;
-		request.method = "DELETE";
-		request.path = "/delete";
+		request.method = "POST";
+		request.path = "/upload/too-big.txt";
 		request.version = "HTTP/1.1";
 		request.headers["host"] = "example.com:8080";
+		request.body = "12345678901";
 		request.keepAlive = true;
 
 		std::string	host = request.headers["host"];
