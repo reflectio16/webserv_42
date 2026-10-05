@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:26:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/10/01 15:56:57 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/05 13:55:13 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,11 +59,13 @@ class ResponseBuilder
 		std::string		getReasonPhrase(int statusCode) const;
 		std::string		buildDefaultErrorBody(int statusCode) const;
 		std::string		getCustomErrorPagePath(const ServerBlock &server, int statusCode) const;
+		std::string		isSupportedMethod(const std::string &method) const;
 		
-		std::string		buildResponse(int statusCode, const std::string &reason, const std::string &contentType, const std::string &body, bool keepAlive) const;
+		std::string		buildResponse(int statusCode, const std::string &reason, const std::string &contentType, const std::string &body, bool keepAlive, const std::string &extraHeaders = "") const;
 		std::string		buildStaticFileResponse(const std::string &path, const HttpRequest &request) const;
 		std::string		buildAutoindexResponse(const std::string &directoryPath, const std::string &uriPath, const HttpRequest &request) const;
 		std::string		buildErrorResponse(int statusCode, const ServerBlock &server, const HttpRequest &request) const;
+		std::string		buildRedirectResponse(const LocationBlock &location, const HttpRequest &request) const;
 		
 		static std::string	toLower(const std::string &str);
 	};

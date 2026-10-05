@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:33:26 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/10/01 16:14:41 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/05 12:55:32 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -286,6 +286,17 @@ std::string	ResponseBuilder::getReasonPhrase(int statusCode) const
 {
 	switch(statusCode)
 	{
+		case 301:
+			return ("Moved Permanently");
+		case 302:
+			return ("Found");
+		case 303:
+			return ("See Other");
+		case 307:
+			return ("Temporary Redirect");
+		case 308:
+			return ("Permanent Redirect");
+			
 		case 400:
 			return ("Bad Request");
 		case 403:
@@ -296,6 +307,7 @@ std::string	ResponseBuilder::getReasonPhrase(int statusCode) const
 			return ("Method Not Allowed");
 		case 413:
 			return ("Payload Too Large");
+			
 		case 500:
 			return ("Internal Server Error");
 		case 501:
@@ -352,7 +364,7 @@ std::string	ResponseBuilder::toLower(const std::string &str)
 	return (result);
 }
 
-std::string		ResponseBuilder::buildResponse(int statusCode, const std::string &reason, const std::string &contentType, const std::string &body, bool keepAlive) const
+std::string		ResponseBuilder::buildResponse(int statusCode, const std::string &reason, const std::string &contentType, const std::string &body, bool keepAlive, const std::string &extraHeaders) const
 {
 	std::ostringstream	response;
 
@@ -373,6 +385,8 @@ std::string		ResponseBuilder::buildResponse(int statusCode, const std::string &r
 	response << "Connection: "
 			 << (keepAlive ? "keep-alive" : "close")
 			 << "\r\n";
+
+	response << extraHeaders;
 	
 	response << "\r\n";
 	
@@ -423,6 +437,24 @@ std::string	ResponseBuilder::buildErrorResponse(int statusCode, const ServerBloc
 	return (buildResponse(statusCode, getReasonPhrase(statusCode), "text/html", body, request.keepAlive));
 }
 
+std::string	ResponseBuilder::buildRedirectResponse(const LocationBlock &location, const HttpRequest &request) const
+{
+	int	code = location.redirectCode;
+	const std::string &target = location.redirectTarget;
+
+	if (code != 301 && code != 302 && code != 303 && code != 307 && code != 308)
+		return ("");
+
+	if (target.empty() || target.find_first_of("\r\n") != std::string::npos)
+		return ("");
+
+	std::string extraHeaders;
+
+	extraHeaders = "Location: " + target + "\r\n";
+
+	return (buildResponse(code, getReasonPhrase(code), "text/html", "", request.keepAlive, extraHeaders));
+}
+
 // Pour tests //
 
 void	ResponseBuilder::debugRouting(
@@ -461,6 +493,18 @@ void	ResponseBuilder::debugRouting(
 	const LocationBlock *location =
 		_config.findLocation(*server, normalizedPath);
 
+	if (location != NULL && location->redirectCode != 0)
+	{
+		std::string	response = buildRedirectResponse(*location, request);
+
+		if (response.empty())
+			response = buildErrorResponse(500, *server, request);
+
+		std::cout << "\n--- HTTP RESPONSE ---\n" << std::endl;
+		std::cout << response;
+		std::cout << "\n--- END RESPONSE ---\n" << std::endl;
+	}
+	
 	std::string root =
 		getEffectiveRoot(*server, location);
 
