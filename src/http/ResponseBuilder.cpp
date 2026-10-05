@@ -6,12 +6,13 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:33:26 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/10/05 14:36:31 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/05 15:25:54 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ResponseBuilder.hpp"
 #include <iostream>
+#include <cstdio>
 
 ResponseBuilder::ResponseBuilder(const Config &config) : _config(config)
 {
@@ -286,6 +287,9 @@ std::string	ResponseBuilder::getReasonPhrase(int statusCode) const
 {
 	switch(statusCode)
 	{
+		case 204:
+			return ("No Content");
+			
 		case 301:
 			return ("Moved Permanently");
 		case 302:
@@ -372,6 +376,11 @@ bool	ResponseBuilder::isMethodAllowed(const std::string &method, const LocationB
 	}
 	
 	return (false);
+}
+
+bool	ResponseBuilder::deleteFile(const std::string &path) const
+{
+	return (std::remove(path.c_str()) == 0);
 }
 
 std::string	ResponseBuilder::toLower(const std::string &str)
@@ -498,6 +507,46 @@ std::string	ResponseBuilder::buildAllowHeader(const LocationBlock *location) con
 	return (header.str());
 }
 
+std::string	ResponseBuilder::buildNoContentResponse(const HttpRequest &request) const
+{
+	std::ostringstream response;
+
+	response << "HTTP/1.1 204 No Content\r\n";
+
+	response << "Connection: "
+			 << (request.keepAlive ? "keep-alive" : "close")
+			 << "\r\n";
+
+	response << "\r\n";
+
+	return (response.str());
+}
+
+std::string	ResponseBuilder::buildDeleteResponse(const std::string &path, const ServerBlock &server, const HttpRequest &request) const
+{
+	ResourceType	type = getResourceType(path);
+
+	if (type == RESOURCE_NOT_FOUND)
+		return (buildErrorResponse(404, server, request));
+		
+	if (type == RESOURCE_DIRECTORY)
+		return (buildErrorResponse(403, server, request));
+
+	if (type == RESOURCE_OTHER)
+		return (buildErrorResponse(403, server, request));
+
+	if (type == RESOURCE_ERROR)
+		return (buildErrorResponse(500, server, request));
+
+	if (type != RESOURCE_FILE)
+		return (buildErrorResponse(500, server, request));
+
+	if (!deleteFile(path))
+		return (buildErrorResponse(500, server, request));
+		
+	return (buildNoContentResponse(request));
+}
+
 // Pour tests //
 
 void	ResponseBuilder::debugRouting(
@@ -578,6 +627,34 @@ void	ResponseBuilder::debugRouting(
 		return ;
 	}
 
+	std::string root =
+		getEffectiveRoot(*server, location);
+
+	std::string path =
+		buildFilePath(normalizedPath, *server, location);
+
+	if (path.empty())
+	{
+		std::cout << buildErrorResponse(
+			500, *server, request);
+		return ;
+	}
+
+	if (request.method == "DELETE")
+	{
+		std::string response =
+			buildDeleteResponse(
+				path,
+				*server,
+				request);
+
+		std::cout << "\n--- HTTP RESPONSE ---\n";
+		std::cout << response;
+		std::cout << "\n--- END RESPONSE ---\n";
+
+		return ;
+	}
+	
 	if (request.method != "GET")
 	{
 		std::cout << "Method allowed but not implemented yet: "
@@ -585,12 +662,6 @@ void	ResponseBuilder::debugRouting(
 				<< std::endl;
 		return ;
 	}
-	
-	std::string root =
-		getEffectiveRoot(*server, location);
-
-	std::string path =
-		buildFilePath(normalizedPath, *server, location);
 
 	std::cout << "Host     : " << host << std::endl;
 	std::cout << "URI      : " << request.path << std::endl;

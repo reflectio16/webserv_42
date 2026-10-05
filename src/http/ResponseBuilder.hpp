@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:26:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/10/05 14:28:59 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/05 14:51:10 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,6 +61,7 @@ class ResponseBuilder
 		std::string		getCustomErrorPagePath(const ServerBlock &server, int statusCode) const;
 		bool			isSupportedMethod(const std::string &method) const;
 		bool			isMethodAllowed(const std::string &method, const LocationBlock *location) const;
+		bool			deleteFile(const std::string &path) const;
 		
 		std::string		buildResponse(int statusCode, const std::string &reason, const std::string &contentType, const std::string &body, bool keepAlive, const std::string &extraHeaders = "") const;
 		std::string		buildStaticFileResponse(const std::string &path, const HttpRequest &request) const;
@@ -68,6 +69,8 @@ class ResponseBuilder
 		std::string		buildErrorResponse(int statusCode, const ServerBlock &server, const HttpRequest &request, const std::string &extraHeader = "") const;
 		std::string		buildRedirectResponse(const LocationBlock &location, const HttpRequest &request) const;
 		std::string		buildAllowHeader(const LocationBlock *location) const;
+		std::string		buildNoContentResponse(const HttpRequest &request) const;
+		std::string		buildDeleteResponse(const std::string &path, const ServerBlock &server, const HttpRequest &request) const;
 		
 		static std::string	toLower(const std::string &str);
 	};

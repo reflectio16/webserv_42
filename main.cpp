@@ -22,8 +22,8 @@ int main(int argc, char** argv) {
 		endpoint.port = 8080;
 
 		HttpRequest	request;
-		request.method = "POST";
-		request.path = "/old";
+		request.method = "DELETE";
+		request.path = "/delete";
 		request.version = "HTTP/1.1";
 		request.headers["host"] = "example.com:8080";
 		request.keepAlive = true;
