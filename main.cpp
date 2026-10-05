@@ -22,8 +22,8 @@ int main(int argc, char** argv) {
 		endpoint.port = 8080;
 
 		HttpRequest	request;
-		request.method = "GET";
-		request.path = "/images/cat.jpg";
+		request.method = "POST";
+		request.path = "/old";
 		request.version = "HTTP/1.1";
 		request.headers["host"] = "example.com:8080";
 		request.keepAlive = true;

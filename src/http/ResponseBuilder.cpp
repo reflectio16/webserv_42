@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:33:26 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/10/05 12:55:32 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/05 14:36:31 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -353,6 +353,27 @@ std::string	ResponseBuilder::getCustomErrorPagePath(const ServerBlock &server, i
 	return (joinPaths(server.root, it->second));
 }
 
+bool	ResponseBuilder::isSupportedMethod(const std::string &method) const
+{
+	return (method == "GET" || method == "POST" || method == "DELETE");
+}
+
+bool	ResponseBuilder::isMethodAllowed(const std::string &method, const LocationBlock *location) const
+{
+	if (location == NULL || location->methods.empty())
+		return (true);
+		
+	std::vector<std::string>::const_iterator	it;
+	
+	for (it = location->methods.begin(); it < location->methods.end(); ++it)
+	{
+		if (*it == method)
+			return (true);
+	}
+	
+	return (false);
+}
+
 std::string	ResponseBuilder::toLower(const std::string &str)
 {
 	std::string result = str;
@@ -415,7 +436,7 @@ std::string	ResponseBuilder::buildAutoindexResponse(const std::string &directory
 	return (buildResponse(200, "OK", "text/html", body, request.keepAlive));
 }
 
-std::string	ResponseBuilder::buildErrorResponse(int statusCode, const ServerBlock &server, const HttpRequest &request) const
+std::string	ResponseBuilder::buildErrorResponse(int statusCode, const ServerBlock &server, const HttpRequest &request, const std::string &extraHeader) const
 {	
 	std::string body = buildDefaultErrorBody(statusCode);
 	std::string	contentType = "text/html";
@@ -434,7 +455,7 @@ std::string	ResponseBuilder::buildErrorResponse(int statusCode, const ServerBloc
 		body = buildDefaultErrorBody(statusCode);
 	}
 	
-	return (buildResponse(statusCode, getReasonPhrase(statusCode), "text/html", body, request.keepAlive));
+	return (buildResponse(statusCode, getReasonPhrase(statusCode), "text/html", body, request.keepAlive, extraHeader));
 }
 
 std::string	ResponseBuilder::buildRedirectResponse(const LocationBlock &location, const HttpRequest &request) const
@@ -453,6 +474,28 @@ std::string	ResponseBuilder::buildRedirectResponse(const LocationBlock &location
 	extraHeaders = "Location: " + target + "\r\n";
 
 	return (buildResponse(code, getReasonPhrase(code), "text/html", "", request.keepAlive, extraHeaders));
+}
+
+std::string	ResponseBuilder::buildAllowHeader(const LocationBlock *location) const
+{
+	if (location == NULL || location->methods.empty())
+		return ("");
+
+	std::ostringstream	header;
+	
+	header << "Allow: ";
+
+	for (std::vector<std::string>::size_type i = 0; i < location->methods.size(); ++i)
+	{
+		if (i != 0)
+			header << ", ";
+		
+		header << location->methods[i];
+	}
+	
+	header << "\r\n";
+	
+	return (header.str());
 }
 
 // Pour tests //
@@ -493,6 +536,34 @@ void	ResponseBuilder::debugRouting(
 	const LocationBlock *location =
 		_config.findLocation(*server, normalizedPath);
 
+	if (!isSupportedMethod(request.method))
+	{
+		std::string response =
+			buildErrorResponse(501, *server, request);
+
+		std::cout << "\n--- HTTP RESPONSE ---\n";
+		std::cout << response;
+		std::cout << "\n--- END RESPONSE ---\n";
+
+		return ;
+	}
+
+	if (!isMethodAllowed(request.method, location))
+	{
+		std::string response =
+			buildErrorResponse(
+				405,
+				*server,
+				request,
+				buildAllowHeader(location));
+
+		std::cout << "\n--- HTTP RESPONSE ---\n";
+		std::cout << response;
+		std::cout << "\n--- END RESPONSE ---\n";
+
+		return ;
+	}
+		
 	if (location != NULL && location->redirectCode != 0)
 	{
 		std::string	response = buildRedirectResponse(*location, request);
@@ -503,6 +574,16 @@ void	ResponseBuilder::debugRouting(
 		std::cout << "\n--- HTTP RESPONSE ---\n" << std::endl;
 		std::cout << response;
 		std::cout << "\n--- END RESPONSE ---\n" << std::endl;
+
+		return ;
+	}
+
+	if (request.method != "GET")
+	{
+		std::cout << "Method allowed but not implemented yet: "
+				<< request.method
+				<< std::endl;
+		return ;
 	}
 	
 	std::string root =
