@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:26:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/10/07 14:44:26 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/07 15:45:33 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -62,7 +62,6 @@ class ResponseBuilder
 		
 		bool			readFile(const std::string &path, std::string &content) const;
 		std::string		getMimeType(const std::string &path) const;
-		std::string		sizeToString(std::size_t value) const;
 		std::string		findIndexFile(const std::string &directoryPath, const LocationBlock *location) const;
 		bool			buildAutoIndexBody(const std::string &directoryPath, const std::string &uriPath, std::string &body) const;
 		std::string		getReasonPhrase(int statusCode) const;
