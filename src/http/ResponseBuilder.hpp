@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:26:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/10/06 17:04:34 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/07 14:44:26 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,11 +16,13 @@
 # include "HttpRequest.hpp"
 # include "../config/Config.hpp"
 # include <vector>
+# include <map>
 # include <sys/stat.h>
 # include <cerrno>
 # include <fstream>
 # include <sstream>
 # include <dirent.h>
+# include <cctype>
 
 class ResponseBuilder
 {
@@ -74,6 +76,9 @@ class ResponseBuilder
 		bool			getMultipartBoundary(const HttpRequest &request, std::string &boundary) const;
 		bool			parseMultipartFile(const std::string &body, const std::string &boundary, MultipartFile &file) const;
 		bool			isSafeUploadFilename(const std::string &filename) const;
+		
+		std::map<std::string, std::string>	buildCgiEnvironment(const HttpRequest &request, const ServerBlock &server, const Endpoint &endpoint, const std::string &scriptPath) const;
+		std::string							headerToCgiName(const std::string &header) const;
 		
 		std::string		buildResponse(int statusCode, const std::string &reason, const std::string &contentType, const std::string &body, bool keepAlive, const std::string &extraHeaders = "") const;
 		std::string		buildStaticFileResponse(const std::string &path, const HttpRequest &request) const;
