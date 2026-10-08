@@ -6,13 +6,15 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/08 17:36:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/09/23 12:07:50 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/09/25 14:45:26 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "RequestParser.hpp"
 #include <sstream>
 #include <cctype>
+#include <iomanip>
+#include <iostream>
 
 RequestParser::RequestParser()
 	:	_state(REQUEST_LINE),
@@ -20,7 +22,9 @@ RequestParser::RequestParser()
 		_contentLength(0),
 		_pos(0),
 		_bytesConsumed(0),
-		_started(false)
+		_started(false),
+		_chunkSize(0),
+		_chunked(false)
 {
 	
 }
@@ -68,12 +72,15 @@ RequestParser::Status	RequestParser::parse(const std::string& inbuf, std::size_t
 				{
 					_pos += 2;
 
+					if (!validateHeaders())
+						return (PARSE_ERROR);
+						
 					if (!finishHeaders())
 						return (PARSE_ERROR);
 						
 					updateKeepAlive();
 					
-					if (_contentLength == 0)
+					if (_state != BODY && _state != CHUNK_SIZE)
 					{
 						_bytesConsumed = _pos;
 						return (COMPLETE);
@@ -91,7 +98,6 @@ RequestParser::Status	RequestParser::parse(const std::string& inbuf, std::size_t
 				continue ;
 			}
 
-			
 			if (_state == BODY)
 			{
 				if (_pos > inbuf.size())
@@ -106,6 +112,82 @@ RequestParser::Status	RequestParser::parse(const std::string& inbuf, std::size_t
 				_bytesConsumed = _pos;
 
 				return (COMPLETE);
+			}
+
+			if (_state == CHUNK_SIZE)
+			{
+				std::string::size_type	end = inbuf.find("\r\n", _pos);
+				
+				if (end == std::string::npos)
+					return (INCOMPLETE);
+				
+				std::string	line = inbuf.substr(_pos, end - _pos);
+					
+				if (!parseChunkSize(line, _chunkSize))
+					return (PARSE_ERROR);
+
+				_pos = end + 2;
+				
+				if (_chunkSize == 0)
+				{
+					_state = CHUNK_TRAILERS;
+					continue;
+				}
+
+				_state = CHUNK_DATA;
+				continue;
+			}
+
+			if (_state == CHUNK_DATA)
+			{
+				if (_pos > inbuf.size())
+					return (PARSE_ERROR);
+				
+				if (inbuf.size() - _pos < _chunkSize)
+					return (INCOMPLETE);
+
+				if (_chunkSize > std::string::npos - _request.body.size())
+					return (PARSE_ERROR);
+					
+				_request.body.append(inbuf, _pos, _chunkSize);
+
+				_pos += _chunkSize;
+				
+				_state = CHUNK_DATA_CRLF;
+				continue;
+			}
+
+			if (_state == CHUNK_DATA_CRLF)
+			{
+				if (inbuf.size() - _pos < 2)
+					return (INCOMPLETE);
+
+				if (inbuf.compare(_pos, 2, "\r\n") != 0)
+					return (PARSE_ERROR);
+					
+				_pos += 2;
+
+				_state = CHUNK_SIZE;
+				continue;
+			}
+
+			if (_state == CHUNK_TRAILERS)
+			{
+				std::string::size_type	end = inbuf.find("\r\n", _pos);
+
+				if (end == std::string::npos)
+					return (INCOMPLETE);
+				
+				if (end == _pos)
+				{
+					_pos += 2;
+					_bytesConsumed = _pos;
+
+					return (COMPLETE);
+				}
+
+				_pos = end + 2;
+				continue;
 			}
 		}
 	}
@@ -133,6 +215,12 @@ bool	RequestParser::parseRequestLine(const std::string &line)
 	_request.method = method;
 	_request.version = version;
 
+	if (!validateVersion(version))
+		return (false);
+	
+	if (target.empty() || target[0] != '/')
+		return (false);
+		
 	std::string::size_type	question = target.find('?');
 
 	if (question == std::string::npos)
@@ -168,6 +256,11 @@ bool	RequestParser::parseHeaderLine(const std::string &line)
 	name = toLower(name);
 	value = trim(value);
 	
+	if (name == "host" || name == "content-length" || name == "transfer-encoding")
+	{
+		if (_request.headers.find(name) != _request.headers.end())
+			return (false);
+	}
 	_request.headers[name] = value;
 
 	return (true);
@@ -176,15 +269,36 @@ bool	RequestParser::parseHeaderLine(const std::string &line)
 bool	RequestParser::finishHeaders()
 {
 	_contentLength = 0;
+	_chunked = false;
 	
-	std::map<std::string, std::string>::const_iterator	it;
+	std::map<std::string, std::string>::const_iterator	contentLength;
+	std::map<std::string, std::string>::const_iterator	transferEncoding;
 	
-	it = _request.headers.find("content-length");
+	
+	contentLength = _request.headers.find("content-length");
+	transferEncoding = _request.headers.find("transfer-encoding");
 
-	if (it == _request.headers.end())
+	if (contentLength != _request.headers.end()
+		&& transferEncoding != _request.headers.end())
+		return (false);
+		
+	if (transferEncoding != _request.headers.end())
+	{
+		std::string	value = toLower(trim(transferEncoding->second));
+		
+		if (value != "chunked")
+			return (false);
+		
+		_chunked = true;
+		_state = CHUNK_SIZE;
+
+		return (true);
+	}
+	
+	if (contentLength == _request.headers.end())
 		return (true);
 
-	const std::string& value = it->second;
+	const std::string& value = contentLength->second;
 
 	if (value.empty())
 		return (false);
@@ -243,7 +357,9 @@ void	RequestParser::reset()
 	_contentLength = 0;
 	_pos = 0;
 	_bytesConsumed = 0;
-	_started = false;	
+	_started = false;
+	_chunkSize = 0;
+	_chunked = false;
 }
 
 const HttpRequest&	RequestParser::request() const
@@ -266,4 +382,57 @@ void	RequestParser::updateKeepAlive()
 		_request.keepAlive = false;
 	else if (value == "keep-alive")
 		_request.keepAlive = true;
+}
+
+bool	RequestParser::parseChunkSize(const std::string& line, std::size_t& size)
+{
+	std::string	value = line;
+	
+	std::string::size_type	semicolon = value.find(';');
+
+	if (semicolon != std::string::npos)
+		value = value.substr(0, semicolon);
+
+	value = trim(value);
+
+	if (value.empty())
+		return (false);
+
+	for (std::string::size_type i = 0; i < value.size(); ++i)
+	{
+		if (!isxdigit(static_cast<unsigned char>(value[i])))
+			return (false);
+	}
+	
+	std::istringstream	stream(value);
+
+	stream >> std::hex >> size;
+
+	if (stream.fail())
+		return (false);
+	
+	return (true);
+}
+
+bool	RequestParser::validateVersion(const std::string& version) const
+{
+	return (version == "HTTP/1.1" || version == "HTTP/1.0");
+}
+
+bool	RequestParser::validateHeaders() const
+{
+	if (_request.version == "HTTP/1.1")
+	{
+		std::map<std::string, std::string>::const_iterator	it;
+		
+		it = _request.headers.find("host");
+		
+		if (it == _request.headers.end())
+			return(false);
+			
+		if (trim(it->second).empty())
+			return (false);
+	}
+	
+	return (true);
 }
