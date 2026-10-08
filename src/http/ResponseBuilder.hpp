@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:26:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/10/07 15:45:33 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/08 15:54:59 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #define RESPONSEBUILDER_HPP
 
 # include "HttpRequest.hpp"
+# include "Outcome.hpp"
 # include "../config/Config.hpp"
 # include <vector>
 # include <map>
@@ -28,9 +29,7 @@ class ResponseBuilder
 {
 	public:
 		ResponseBuilder(const Config &config);
-
-		// TEMPORAIRE : tests
-		void	debugRouting(const HttpRequest &request, const Endpoint &endpoint) const;
+		Outcome	build(const HttpRequest &request, Endpoint &endpoint) const;
 		
 	private:
 		enum ResourceType
@@ -78,6 +77,8 @@ class ResponseBuilder
 		
 		std::map<std::string, std::string>	buildCgiEnvironment(const HttpRequest &request, const ServerBlock &server, const Endpoint &endpoint, const std::string &scriptPath) const;
 		std::string							headerToCgiName(const std::string &header) const;
+		std::vector<std::string>			cgiEnvToVector(const std::map<std::string, std::string> &env) const;
+		bool								findCgiInterpreter(const LocationBlock *location, const std::string &path, std::string &interpreter) const;
 		
 		std::string		buildResponse(int statusCode, const std::string &reason, const std::string &contentType, const std::string &body, bool keepAlive, const std::string &extraHeaders = "") const;
 		std::string		buildStaticFileResponse(const std::string &path, const HttpRequest &request) const;
@@ -92,6 +93,9 @@ class ResponseBuilder
 		std::string		buildMultipartUploadResponse(const LocationBlock &location, const ServerBlock &server, const HttpRequest &request) const;
 		
 		static std::string	toLower(const std::string &str);
+
+		Outcome			makeResponseOutcome(const std::string &response, bool keepAlive) const;
+		Outcome			makeCgiOutcome(const HttpRequest &request, const ServerBlock &server, const Endpoint &endpoint, const std::string &scriptPath, const std::string &interpreter) const;
 	};
 
 #endif

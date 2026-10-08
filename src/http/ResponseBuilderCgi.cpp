@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:33:26 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/10/07 15:55:07 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/08 15:13:40 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -69,4 +69,38 @@ std::string	ResponseBuilder::headerToCgiName(const std::string &header) const
 	}
 	
 	return (result);
+}
+
+std::vector<std::string>	ResponseBuilder::cgiEnvToVector(const std::map<std::string, std::string> &env) const
+{
+	std::vector<std::string>	result;
+	
+	for (std::map<std::string, std::string>::const_iterator it = env.begin(); it != env.end(); ++it)
+	{
+		result.push_back(it->first + "=" + it->second);
+	}
+	
+	return (result);
+}
+
+bool	ResponseBuilder::findCgiInterpreter(const LocationBlock *location, const std::string &path, std::string &interpreter) const
+{
+	if (location == NULL)
+		return (false);
+
+	std::string::size_type dot = path.rfind('.');
+
+	if (dot == std::string::npos)
+		return (false);
+
+	std::string extension = path.substr(dot);
+	
+	std::map<std::string, std::string>::const_iterator it = location->cgiHandlers.find(extension);
+	
+	if (it == location->cgiHandlers.end())
+		return (false);
+
+	interpreter = it->second;
+
+	return (true);
 }

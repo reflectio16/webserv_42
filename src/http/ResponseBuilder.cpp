@@ -6,7 +6,7 @@
 /*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:33:26 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/10/07 15:54:20 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/08 16:32:23 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,265 +34,334 @@ std::string	ResponseBuilder::toLower(const std::string &str)
 	return (result);
 }
 
-// Pour tests //
-
-// void	ResponseBuilder::debugRouting(
-// 	const HttpRequest &request,
-// 	const Endpoint &endpoint) const
-// {
-// 	std::map<std::string, std::string>::const_iterator hostIt;
-
-// 	hostIt = request.headers.find("host");
-
-// 	if (hostIt == request.headers.end())
-// 	{
-// 		std::cout << "No Host header" << std::endl;
-// 		return ;
-// 	}
-
-// 	std::string host = hostWithoutPort(hostIt->second);
-
-// 	const ServerBlock *server =
-// 		_config.findServer(endpoint, host);
-
-// 	if (server == NULL)
-// 	{
-// 		std::cout << "No server found" << std::endl;
-// 		return ;
-// 	}
-
-// 	std::string	normalizedPath;
-
-// 	if (!normalizePath(request.path, normalizedPath))
-// 	{
-// 		std::cout << "INVALID PATH" << std::endl;
-// 		return ;
-// 	}
+Outcome	ResponseBuilder::makeResponseOutcome(const std::string &response, bool keepAlive) const
+{
+	Outcome	outcome;
 	
-// 	const LocationBlock *location =
-// 		_config.findLocation(*server, normalizedPath);
+	outcome.kind = Outcome::RESPONSE;
+	outcome.keepAlive = keepAlive;
+	outcome.responseBytes = response;
 
-// 	if (request.path == "/cgi/hello.py")
-// 	{
-// 		std::string scriptPath =
-// 			"/tmp/webserv/cgi/hello.py";
+	return (outcome);
+}
 
-// 		std::map<std::string, std::string> env =
-// 			buildCgiEnvironment(
-// 				request,
-// 				*server,
-// 				endpoint,
-// 				scriptPath);
+Outcome	ResponseBuilder::makeCgiOutcome(const HttpRequest &request, const ServerBlock &server, const Endpoint &endpoint, const std::string &scriptPath, const std::string &interpreter) const
+{
+	Outcome	outcome;
 
-// 		for (std::map<std::string, std::string>::const_iterator it =
-// 				env.begin();
-// 			it != env.end();
-// 			++it)
-// 		{
-// 			std::cout << it->first
-// 					<< "="
-// 					<< it->second
-// 					<< std::endl;
-// 		}
-
-// 		return ;
-// 	}
-		
-// 	if (!isSupportedMethod(request.method))
-// 	{
-// 		std::string response =
-// 			buildErrorResponse(501, *server, request);
-
-// 		std::cout << "\n--- HTTP RESPONSE ---\n";
-// 		std::cout << response;
-// 		std::cout << "\n--- END RESPONSE ---\n";
-
-// 		return ;
-// 	}
-
-// 	if (!isMethodAllowed(request.method, location))
-// 	{
-// 		std::string response =
-// 			buildErrorResponse(
-// 				405,
-// 				*server,
-// 				request,
-// 				buildAllowHeader(location));
-
-// 		std::cout << "\n--- HTTP RESPONSE ---\n";
-// 		std::cout << response;
-// 		std::cout << "\n--- END RESPONSE ---\n";
-
-// 		return ;
-// 	}
-		
-// 	if (location != NULL && location->redirectCode != 0)
-// 	{
-// 		std::string	response = buildRedirectResponse(*location, request);
-
-// 		if (response.empty())
-// 			response = buildErrorResponse(500, *server, request);
-
-// 		std::cout << "\n--- HTTP RESPONSE ---\n" << std::endl;
-// 		std::cout << response;
-// 		std::cout << "\n--- END RESPONSE ---\n" << std::endl;
-
-// 		return ;
-// 	}
-
-// 	std::string root =
-// 		getEffectiveRoot(*server, location);
-
-// 	std::string path =
-// 		buildFilePath(normalizedPath, *server, location);
-
-// 	if (path.empty())
-// 	{
-// 		std::cout << buildErrorResponse(
-// 			500, *server, request);
-// 		return ;
-// 	}
-
-// 	if (request.method == "DELETE")
-// 	{
-// 		std::string response =
-// 			buildDeleteResponse(
-// 				path,
-// 				*server,
-// 				request);
-
-// 		std::cout << "\n--- HTTP RESPONSE ---\n";
-// 		std::cout << response;
-// 		std::cout << "\n--- END RESPONSE ---\n";
-
-// 		return ;
-// 	}
-
-// 	if (request.method == "POST")
-// 	{
-// 		if (location == NULL)
-// 		{
-// 			std::cout << buildErrorResponse(
-// 				404, *server, request);
-
-// 			return ;
-// 		}
-
-// 		if (server->clientMaxBodySize != 0
-// 			&& request.body.size() > server->clientMaxBodySize)
-// 		{
-// 			std::string	response = buildErrorResponse(
-// 				413, *server, request);
-
-			
-// 			std::cout << "\n--- HTTP RESPONSE ---\n";
-// 			std::cout << response;
-// 			std::cout << "\n--- END RESPONSE ---\n";
-			
-// 			return ;
-// 		}
-
-// 		std::string response ;
-		
-// 		if (isMultipartRequest(request))
-// 		{
-// 			response = buildMultipartUploadResponse(*location, *server, request);
-// 		}
-// 		else
-// 		{
-// 			response = buildUploadResponse(normalizedPath, *location, *server, request);
-// 		}
-
-// 		std::cout << "\n--- HTTP RESPONSE ---\n";
-// 		std::cout << response;
-// 		std::cout << "\n--- END RESPONSE ---\n";
-
-// 		return ;
-// 	}
+	outcome.kind = Outcome::CGI;
+	outcome.keepAlive = request.keepAlive;
+	outcome.cgiInterpreter = interpreter;
+	outcome.cgiScriptPath = scriptPath;
+	outcome.cgiBody = request.body;
 	
-// 	if (request.method != "GET")
-// 	{
-// 		std::cout << "Method allowed but not implemented yet: "
-// 				<< request.method
-// 				<< std::endl;
-// 		return ;
-// 	}
+	std::map<std::string, std::string> env = buildCgiEnvironment(request, server, endpoint, scriptPath);
+	outcome.cgiEnv = cgiEnvToVector(env);
 
-// 	std::cout << "Host     : " << host << std::endl;
-// 	std::cout << "URI      : " << request.path << std::endl;
-// 	std::cout << "server   : " << server->serverName << std::endl;
+	return (outcome);
+}
 
-// 	if (location != NULL)
-// 		std::cout << "location : " << location->path << std::endl;
-// 	else
-// 		std::cout << "location : NONE" << std::endl;
+Outcome	ResponseBuilder::build(const HttpRequest &request, Endpoint &endpoint) const
+{
+	std::string	host;
 
-// 	std::cout << "root     : " << root << std::endl;
+	std::map<std::string, std::string>::const_iterator hostIt = request.headers.find("host");
 	
-// 	std::cout << "path     : " << path << std::endl;
+	if (hostIt != request.headers.end())
+		host = hostWithoutPort(hostIt->second);
 
-// 	if (path.empty())
-// 	{
-// 		std::cout << "resource : INVALID PATH" << std::endl;
-// 		return ;
-// 	}
+	const ServerBlock *server = _config.findServer(endpoint, host);
+	
+	if (server == NULL)
+	{
+		std::string body = buildDefaultErrorBody(500);
 
-// 	ResourceType type = getResourceType(path);
-
-// 	if (type == RESOURCE_FILE && request.method == "GET")
-// 	{
-// 		std::string	response = buildStaticFileResponse(path, request);
-
-// 		std::cout << "\n--- HTTP RESPONSE ---\n" << std::endl;
-// 		std::cout << response;
-// 		std::cout << "\n--- END RESPONSE ---\n" << std::endl;
-// 	}
-// 	else if (type == RESOURCE_DIRECTORY)
-// 	{
-// 		std::string	indexPath = findIndexFile(path, location);
-
-// 		if (!indexPath.empty())
-// 		{
-// 			std::cout	<< "index    : "
-// 						<< indexPath
-// 						<<std::endl;
-						
-// 			std::string	response = buildStaticFileResponse(indexPath, request);
-
-// 			std::cout << "\n--- HTTP RESPONSE ---\n" << std::endl;
-// 			std::cout << response;
-// 			std::cout << "\n--- END RESPONSE ---\n" << std::endl;
-// 			return ;
-// 		}
-// 		if (location != NULL && location->autoindex)
-// 		{
-// 			std::string response = buildAutoindexResponse(path, normalizedPath, request);
-
-// 			std::cout << "\n--- HTTP RESPONSE ---\n" << std::endl;
-// 			std::cout << response;
-// 			std::cout << "\n--- END RESPONSE ---\n" << std::endl;
-// 			return ;
-// 		}
+		std::string	response = buildResponse(500, getReasonPhrase(500), "text/html", body, false);
 		
-// 		std::string	response = buildErrorResponse(403, *server, request);
-		
-// 		std::cout << response << std::endl;
-// 		return ;
-// 	}
-// 	else if (type == RESOURCE_NOT_FOUND)
-// 	{
-// 		std::string	response = buildErrorResponse(404, *server, request);
-		
-// 		std::cout << response << std::endl;
-// 		return ;
-// 	}
-// 	else if (type == RESOURCE_OTHER)
-// 		std::cout << "resource : OTHER" << std::endl;
-// 	else if (type == RESOURCE_ERROR)
-// 	{
-// 		std::string	response = buildErrorResponse(500, *server, request);
-		
-// 		std::cout << response << std::endl;
-// 		return ;
-// 	}
-// }
+		return (makeResponseOutcome(response, false));
+	}
+
+	std::string	normalizedPath;
+
+	if (!normalizePath(request.path, normalizedPath))
+		return (makeResponseOutcome(buildErrorResponse(400, *server, request), request.keepAlive));
+
+	const LocationBlock *location = _config.findLocation(*server, normalizedPath);
+	
+	// 1. Méthode HTTP non implémentée par Webserv
+	if (!isSupportedMethod(request.method))
+	{
+		return (makeResponseOutcome(
+			buildErrorResponse(
+				501,
+				*server,
+				request),
+			request.keepAlive));
+	}
+
+	// 2. Méthode connue, mais interdite sur cette location
+	if (!isMethodAllowed(request.method, location))
+	{
+		return (makeResponseOutcome(
+			buildErrorResponse(
+				405,
+				*server,
+				request,
+				buildAllowHeader(location)),
+			request.keepAlive));
+	}
+
+	// 3. Body trop gros
+	if (server->clientMaxBodySize != 0
+		&& request.body.size() > server->clientMaxBodySize)
+	{
+		return (makeResponseOutcome(
+			buildErrorResponse(
+				413,
+				*server,
+				request),
+			request.keepAlive));
+	}
+
+	// 4. Redirection configurée
+	if (location != NULL && location->redirectCode != 0)
+	{
+		std::string response =
+			buildRedirectResponse(*location, request);
+
+		if (response.empty())
+		{
+			response =
+				buildErrorResponse(
+					500,
+					*server,
+					request);
+		}
+
+		return (makeResponseOutcome(
+			response,
+			request.keepAlive));
+	}
+
+	std::string path =
+		buildFilePath(
+			normalizedPath,
+			*server,
+			location);
+
+	if (path.empty())
+	{
+		return (makeResponseOutcome(
+			buildErrorResponse(
+				500,
+				*server,
+				request),
+			request.keepAlive));
+	}
+
+	std::string interpreter;
+
+	if (findCgiInterpreter(
+			location,
+			normalizedPath,
+			interpreter))
+	{
+		ResourceType type =
+			getResourceType(path);
+
+		if (type == RESOURCE_NOT_FOUND)
+		{
+			return (makeResponseOutcome(
+				buildErrorResponse(
+					404,
+					*server,
+					request),
+				request.keepAlive));
+		}
+
+		if (type == RESOURCE_DIRECTORY
+			|| type == RESOURCE_OTHER)
+		{
+			return (makeResponseOutcome(
+				buildErrorResponse(
+					403,
+					*server,
+					request),
+				request.keepAlive));
+		}
+
+		if (type == RESOURCE_ERROR)
+		{
+			return (makeResponseOutcome(
+				buildErrorResponse(
+					500,
+					*server,
+					request),
+				request.keepAlive));
+		}
+
+		return (makeCgiOutcome(
+			request,
+			*server,
+			endpoint,
+			path,
+			interpreter));
+	}
+
+	if (request.method == "DELETE")
+	{
+		return (makeResponseOutcome(
+			buildDeleteResponse(
+				path,
+				*server,
+				request),
+			request.keepAlive));
+	}
+
+	if (request.method == "POST")
+	{
+		if (location == NULL)
+		{
+			return (makeResponseOutcome(
+				buildErrorResponse(
+					404,
+					*server,
+					request),
+				request.keepAlive));
+		}
+
+		std::string response;
+
+		if (isMultipartRequest(request))
+		{
+			response =
+				buildMultipartUploadResponse(
+					*location,
+					*server,
+					request);
+		}
+		else
+		{
+			response =
+				buildUploadResponse(
+					normalizedPath,
+					*location,
+					*server,
+					request);
+		}
+
+		return (makeResponseOutcome(
+			response,
+			request.keepAlive));
+	}
+
+	ResourceType type =
+		getResourceType(path);
+
+	if (type == RESOURCE_FILE)
+	{
+		std::string response =
+			buildStaticFileResponse(
+				path,
+				request);
+
+		if (response.empty())
+		{
+			response =
+				buildErrorResponse(
+					500,
+					*server,
+					request);
+		}
+
+		return (makeResponseOutcome(
+			response,
+			request.keepAlive));
+	}
+
+	if (type == RESOURCE_DIRECTORY)
+	{
+		std::string indexPath =
+			findIndexFile(
+				path,
+				location);
+
+		if (!indexPath.empty())
+		{
+			std::string response =
+				buildStaticFileResponse(
+					indexPath,
+					request);
+
+			if (response.empty())
+			{
+				response =
+					buildErrorResponse(
+						500,
+						*server,
+						request);
+			}
+
+			return (makeResponseOutcome(
+				response,
+				request.keepAlive));
+		}
+
+		if (location != NULL
+			&& location->autoindex)
+		{
+			std::string response =
+				buildAutoindexResponse(
+					path,
+					normalizedPath,
+					request);
+
+			if (response.empty())
+			{
+				response =
+					buildErrorResponse(
+						500,
+						*server,
+						request);
+			}
+
+			return (makeResponseOutcome(
+				response,
+				request.keepAlive));
+		}
+
+		return (makeResponseOutcome(
+			buildErrorResponse(
+				403,
+				*server,
+				request),
+			request.keepAlive));
+	}
+
+	if (type == RESOURCE_NOT_FOUND)
+	{
+		return (makeResponseOutcome(
+			buildErrorResponse(
+				404,
+				*server,
+				request),
+			request.keepAlive));
+	}
+
+	if (type == RESOURCE_OTHER)
+	{
+		return (makeResponseOutcome(
+			buildErrorResponse(
+				403,
+				*server,
+				request),
+			request.keepAlive));
+	}
+
+	return (makeResponseOutcome(
+		buildErrorResponse(
+			500,
+			*server,
+			request),
+		request.keepAlive));
+}
