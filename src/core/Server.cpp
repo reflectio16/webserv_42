@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:37 by meelma            #+#    #+#             */
-/*   Updated: 2026/10/09 14:41:00 by meelma           ###   ########.fr       */
+/*   Updated: 2026/10/09 15:16:59 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,7 @@
 #include <iostream>
 #include <set>
 #include <utility>        // pair, make_pair
+#include <cctype>
 
 
 // Guard so a client whose headers never end can't grow inbuf without bound.
@@ -366,17 +367,6 @@ void Server::removeCgiPipe(int pipeFd) {
     _cgiOwner.erase(pipeFd);
 }
 
-// TEMP -- until François's ResponseBuilder::finalizeCgi lands.
-// CGI output is "headers\r\n\r\nbody"; a real finalize parses the CGI headers.
-// This crude version just wraps whatever the script printed as the body.
-static std::string tempFinalizeCgi(const std::string& cgiOut, bool keepAlive) {
-    std::ostringstream oss;
-    oss << "HTTP/1.1 200 OK\r\n"
-        << "Content-Length: " << cgiOut.size() << "\r\n";
-    if (!keepAlive) oss << "Connection: close\r\n";
-    oss << "\r\n" << cgiOut;
-    return oss.str();
-}
 
 void Server::finishCgi(Connection& conn) {
     // stdout pipe is done -> stop watching it
@@ -391,11 +381,8 @@ void Server::finishCgi(Connection& conn) {
     }
     CgiProcess::cleanup(conn);   // reap the child (waitpid) -- kills the zombie
 
-    // CGI stdout -> real HTTP response.  (Until François's finalizeCgi exists,
-    // use a temporary wrapper -- see note below.)
-
-    std::string resp = tempFinalizeCgi(conn.cgiBuf, conn.keepAlive); // will remove!!
-    //std::string resp = ResponseBuilder::finalizeCgi(conn.cgiBuf, conn.keepAlive);
+    ResponseBuilder builder(_config);
+    std::string resp = builder.finalizeCgi(conn.cgiBuf, conn.keepAlive);
     conn.queueResponse(resp);
     conn.state = WRITING_RESPONSE;
     watchFor(conn.fd, POLLOUT);

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ResponseBuilder.hpp                                :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
+/*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:26:27 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/10/08 15:54:59 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/09 15:16:10 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,7 @@ class ResponseBuilder
 	public:
 		ResponseBuilder(const Config &config);
 		Outcome	build(const HttpRequest &request, Endpoint &endpoint) const;
+		std::string	finalizeCgi(const std::string &cgiOut, bool keepAlive) const;
 		
 	private:
 		enum ResourceType
