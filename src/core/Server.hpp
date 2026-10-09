@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:56 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/30 13:34:05 by meelma           ###   ########.fr       */
+/*   Updated: 2026/10/09 13:54:05 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 #include <poll.h>            // struct pollfd, poll, POLLIN, ...
 #include "Config.hpp"
 #include "Connection.hpp"
+#include "ResponseBuilder.hpp"
 
 // The engine. Owns the config, the listening sockets, the live connections,
 // and the single poll() loop that drives everything. One instance = one server.

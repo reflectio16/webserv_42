@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:37 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/30 13:33:38 by meelma           ###   ########.fr       */
+/*   Updated: 2026/10/09 14:41:00 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,6 +71,7 @@ void Server::setupListeners() {
         }
 
         addToPoll(fd, POLLIN, LISTENING);
+        _listenEndpoints[fd] = endpoints[i];
         bound.insert(key);
         std::cout << "listening on " << endpoints[i].host
                   << ":" << endpoints[i].port << std::endl;
@@ -183,7 +184,6 @@ void Server::acceptClient(int listenFd) {
     }
     _conns.insert(std::make_pair(clientFd, conn));
     addToPoll(clientFd, POLLIN, CLIENT);
-    std::cout << "[+] client connected (fd " << clientFd << ")" << std::endl;
 }
 
 void Server::onReadable(Connection& conn) {
@@ -197,8 +197,6 @@ void Server::onReadable(Connection& conn) {
 
     conn.inbuf.append(buf, static_cast<size_t>(n));   // connection owns the tape
     processInput(conn);
-    std::cout << "[fd " << conn.fd << "] received " << n
-              << " bytes (total buffered: " << conn.inbuf.size() << ")" << std::endl;
 }
 
 // Feed the parser and act on its verdict. Split out from onReadable so the
@@ -226,32 +224,26 @@ void Server::onReadable(Connection& conn) {
  
    // 3. COMPLETE -- now we have a request; decide what to do with it
    
-    const HttpRequest& req = conn.parser.request();   // read his parsed request
-    
-    std::cerr << "[COMPLETE] method=" << req.method
-              << " path=[" << req.path << "]" << std::endl;   // TEMP
-
-              
+    const HttpRequest& req = conn.parser.request();   // read his parsed request            
     conn.keepAlive = req.keepAlive;                    // honor Connection: close for real
     conn.parsePos  = conn.parser.bytesConsumed();
 
-    // ===== TEMPORARY CGI TEST STUB -- delete when build() lands =====
+    // COMPLETE ---------------------------------------------------------------
+    conn.parsePos = conn.parser.bytesConsumed();
 
-    std::cerr << "[check] comparing path to /hello.py" << std::endl; // TEMP    
-    if (req.path == "/hello.py") {
+    Endpoint endpoint;
+    endpoint.host = conn.listenHost;
+    endpoint.port = conn.listenPort;
 
-        std::cerr << "[CGI] entering CGI branch" << std::endl;        // TEMP
-        
-        Outcome o;
-        o.kind           = Outcome::CGI;
-        o.keepAlive      = req.keepAlive;
-        o.cgiInterpreter = "/usr/bin/python3";
-        o.cgiScriptPath  = "www/cgi-bin/hello.py";
-        o.cgiEnv.push_back("REQUEST_METHOD=" + req.method);
-        o.cgiEnv.push_back("QUERY_STRING=" + req.query);
-        o.cgiBody        = req.body;
-        conn.cgiStartMs = _elapsedMs;         // stamp for the timeout sweep
+    ResponseBuilder builder(_config);
+    Outcome o = builder.build(req, endpoint);
+    conn.keepAlive = o.keepAlive;
 
+    if (o.kind == Outcome::RESPONSE) {
+        conn.queueResponse(o.responseBytes);
+        watchFor(conn.fd, POLLOUT);
+    }
+    else {   // Outcome::CGI
         if (!CgiProcess::start(conn, o)) {
             conn.keepAlive = false;
             conn.queueResponse(buildError(500, "Internal Server Error"));
@@ -261,16 +253,7 @@ void Server::onReadable(Connection& conn) {
         addCgiPipe(conn.cgiStdoutFd, conn.fd, POLLIN, CGI_STDOUT);
         if (conn.cgiStdinFd != -1)
             addCgiPipe(conn.cgiStdinFd, conn.fd, POLLOUT, CGI_STDIN);
-        return;
     }
-    // ===== END TEMPORARY STUB =====
-
-    // 4. normal (non-CGI) path
-    
-    conn.queueResponse(buildResponse(req));            // pass the request in
-    watchFor(conn.fd, POLLOUT);
-
-   
 
 }
 
@@ -341,7 +324,6 @@ void Server::closeConnection(int fd) {
     removeFromPoll(fd);
     _roles.erase(fd);
     _conns.erase(fd);
-    std::cout << "[-] closed fd " << fd << std::endl;
 }
 
 // ---- poll-set bookkeeping --------------------------------------------------

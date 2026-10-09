@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/27 21:56:03 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/30 13:33:20 by meelma           ###   ########.fr       */
+/*   Updated: 2026/10/09 14:41:28 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -132,8 +132,6 @@ bool start(Connection& conn, const Outcome& recipe) {
         close(conn.cgiStdinFd);      // no body -> child reads instant EOF
         conn.cgiStdinFd = -1;        // signal "no stdin pipe to register"
     }
-
-    std::cerr << "CGI forked, pid " << pid << "\n";   // TEMP debug -- remove later!!!
     return true;
 }
 
