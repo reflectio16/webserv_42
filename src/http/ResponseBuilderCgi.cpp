@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ResponseBuilderCgi.cpp                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
+/*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/28 12:33:26 by fmoulin           #+#    #+#             */
-/*   Updated: 2026/10/08 15:13:40 by fmoulin          ###   ########.fr       */
+/*   Updated: 2026/10/11 14:17:02 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -104,3 +104,87 @@ bool	ResponseBuilder::findCgiInterpreter(const LocationBlock *location, const st
 
 	return (true);
 }
+
+std::string ResponseBuilder::finalizeCgi(const std::string &cgiOut, bool keepAlive) const
+{
+    // 1. Find the blank line that separates CGI headers from the body.
+    //    Accept both \r\n\r\n and \n\n (scripts are inconsistent).
+    std::string headerBlock;
+    std::string body;
+    std::string::size_type sep = cgiOut.find("\r\n\r\n");
+    std::string::size_type sepLen = 4;
+    if (sep == std::string::npos) {
+        sep = cgiOut.find("\n\n");
+        sepLen = 2;
+    }
+    if (sep == std::string::npos) {
+        // No header/body separator at all -> treat the whole thing as body,
+        // with a default Content-Type.
+        headerBlock = "";
+        body = cgiOut;
+    } else {
+        headerBlock = cgiOut.substr(0, sep);
+        body = cgiOut.substr(sep + sepLen);
+    }
+ 
+    // 2. Walk the CGI header lines. Pull out "Status:" (sets HTTP status),
+    //    pass everything else through unchanged.
+    int         statusCode   = 200;
+    std::string statusReason = "OK";
+    std::string passedHeaders;          // the CGI headers we forward as-is
+ 
+    std::string::size_type pos = 0;
+    while (pos < headerBlock.size()) {
+        std::string::size_type eol = headerBlock.find('\n', pos);
+        std::string line = (eol == std::string::npos)
+                           ? headerBlock.substr(pos)
+                           : headerBlock.substr(pos, eol - pos);
+        // strip a trailing '\r'
+        if (!line.empty() && line[line.size() - 1] == '\r')
+            line.erase(line.size() - 1);
+ 
+        if (!line.empty()) {
+            // case-insensitive check for "status:"
+            std::string lower = line;
+            for (std::string::size_type i = 0; i < lower.size(); ++i)
+                lower[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(lower[i])));
+ 
+            if (lower.compare(0, 7, "status:") == 0) {
+                // e.g. "Status: 404 Not Found"
+                std::string value = line.substr(7);
+                // trim leading spaces
+                std::string::size_type s = value.find_first_not_of(" \t");
+                if (s != std::string::npos)
+                    value = value.substr(s);
+                std::istringstream iss(value);
+                int code;
+                if (iss >> code) {
+                    statusCode = code;
+                    std::string rest;
+                    std::getline(iss, rest);
+                    std::string::size_type r = rest.find_first_not_of(" \t");
+                    statusReason = (r != std::string::npos) ? rest.substr(r) : "";
+                }
+            } else {
+                // forward this CGI header into the HTTP response
+                passedHeaders += line;
+                passedHeaders += "\r\n";
+            }
+        }
+ 
+        if (eol == std::string::npos)
+            break;
+        pos = eol + 1;
+    }
+ 
+    // 3. Build the HTTP response.
+    std::ostringstream oss;
+    oss << "HTTP/1.1 " << statusCode << " " << statusReason << "\r\n";
+    oss << passedHeaders;                       // the CGI headers (Content-Type, etc.)
+    oss << "Content-Length: " << body.size() << "\r\n";
+    oss << "Connection: " << (keepAlive ? "keep-alive" : "close") << "\r\n";
+    oss << "\r\n";
+    oss << body;
+    return oss.str();
+}
+
