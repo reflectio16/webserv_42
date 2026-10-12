@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:37 by meelma            #+#    #+#             */
-/*   Updated: 2026/10/09 15:16:59 by meelma           ###   ########.fr       */
+/*   Updated: 2026/10/12 15:02:23 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,9 +87,11 @@ void Server::setupListeners() {
 void Server::run() {
     while (true) {
         int ready = poll(&_pfds[0], _pfds.size(), POLL_TIMEOUT_MS);
-        _elapsedMs += POLL_TIMEOUT_MS;        // approximate clock
 
-        if (ready > 0) {
+        if (ready == 0)                          // poll timed out -> real time elapsed
+            _elapsedMs += POLL_TIMEOUT_MS;
+
+        if (ready > 0) {                         // fds ready -> dispatch them
             std::vector<std::pair<int, short> > readyFds;
             for (size_t i = 0; i < _pfds.size(); ++i)
                 if (_pfds[i].revents != 0)
@@ -98,7 +100,7 @@ void Server::run() {
                 dispatch(readyFds[i].first, readyFds[i].second);
         }
 
-        checkCgiTimeouts();                   // runaway-script guard
+        checkCgiTimeouts();
     }
 }
 
