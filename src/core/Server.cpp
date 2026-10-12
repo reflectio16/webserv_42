@@ -6,7 +6,7 @@
 /*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/14 14:18:37 by meelma            #+#    #+#             */
-/*   Updated: 2026/10/12 15:02:23 by meelma           ###   ########.fr       */
+/*   Updated: 2026/10/12 17:00:22 by meelma           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -253,6 +253,7 @@ void Server::onReadable(Connection& conn) {
             watchFor(conn.fd, POLLOUT);
             return;
         }
+        conn.cgiStartMs = _elapsedMs;
         addCgiPipe(conn.cgiStdoutFd, conn.fd, POLLIN, CGI_STDOUT);
         if (conn.cgiStdinFd != -1)
             addCgiPipe(conn.cgiStdinFd, conn.fd, POLLOUT, CGI_STDIN);
