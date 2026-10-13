@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Error tests — webserv</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<header><div class="wrap">
+<h1>webserv tester</h1>
+<p>42 · HTTP/1.1 · browser demonstration</p>
+<nav>
+<a href="/">Home</a>
+<a href="/get.html">GET</a>
+<a href="/post.html">POST</a>
+<a href="/delete.html">DELETE</a>
+<a href="/cgi.html">CGI</a>
+<a href="/errors.html">Errors</a>
+</nav></div></header>
+<main>
+<section class="intro">
+<h2>Error tests</h2>
+<p>Each button sends a real request. No response panel is shown in the browser: inspect the full response in the terminal.</p>
+</section>
+
+<div class="grid">
+  <div class="card"><span class="method status">403</span><h3>Forbidden</h3><p>Directory with autoindex disabled and no index file.</p><button onclick="triggerError('GET','/forbidden/','error-note')">Send GET</button></div>
+  <div class="card"><span class="method status">404</span><h3>Not Found</h3><p>Request a resource that does not exist.</p><button onclick="triggerError('GET','/missing-page','error-note')">Send GET</button></div>
+  <div class="card"><span class="method status">405</span><h3>Method Not Allowed</h3><p>POST to a GET-only static route.</p><button onclick="triggerError('POST','/images/readme.txt','error-note')">Send POST</button></div>
+  <div class="card"><span class="method status">413</span><h3>Payload Too Large</h3><p>Send 2048 bytes with a 1024-byte configured limit.</p><button onclick="trigger413()">Send oversized POST</button></div>
+  <div class="card"><span class="method status">501</span><h3>Not Implemented</h3><p>Send a PUT request.</p><button onclick="triggerError('PUT','/images/readme.txt','error-note')">Send PUT</button></div>
+  <div class="card"><span class="method status">504</span><h3>Gateway Timeout</h3><p>Run the intentionally slow CGI.</p><button onclick="trigger504()">Run slow CGI</button></div>
+</div>
+<div class="note" id="error-note"></div>
+
+</main>
+<footer><div class="wrap">webserv · École 42 · responses are printed by the server in the terminal</div></footer>
+<script src="/assets/app.js"></script>
+</body>
+</html>

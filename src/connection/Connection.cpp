@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
+/*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/21 16:00:28 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/27 17:03:21 by meelma           ###   ########.fr       */
+/*   Updated: 2026/10/13 13:06:25 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,6 +65,17 @@ void Connection::compact() {
 // the writeOffset reset so it can't be forgotten (forgetting it re-sends the
 // tail of a previous response).
 void Connection::queueResponse(const std::string& bytes) {
+	std::cout << std::endl;
+	std::cout << "================ HTTP RESPONSE ================" << std::endl;
+
+	std::cout << bytes;
+
+	if (bytes.empty() || bytes[bytes.size() - 1] != '\n')
+		std::cout << std::endl;
+
+	std::cout << "===============================================" << std::endl;
+	std::cout << std::endl;
+	
     outbuf      = bytes;
     writeOffset = 0;
     state       = WRITING_RESPONSE;

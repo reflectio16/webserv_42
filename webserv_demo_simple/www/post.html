@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POST tests — webserv</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<header><div class="wrap">
+<h1>webserv tester</h1>
+<p>42 · HTTP/1.1 · browser demonstration</p>
+<nav>
+<a href="/">Home</a>
+<a href="/get.html">GET</a>
+<a href="/post.html">POST</a>
+<a href="/delete.html">DELETE</a>
+<a href="/cgi.html">CGI</a>
+<a href="/errors.html">Errors</a>
+</nav></div></header>
+<main>
+<section class="intro">
+<h2>POST tests</h2>
+<p>POST requests are sent silently from this page. The browser only tells you that the request was sent; inspect the complete response in the webserv terminal.</p>
+</section>
+
+<div class="grid">
+  <div class="card">
+    <span class="method post">POST</span>
+    <h3>Raw body upload</h3>
+    <p><span class="code">POST /upload/browser-demo.txt</span></p>
+    <label for="raw-body">Body</label>
+    <textarea id="raw-body">Hello from the browser!</textarea>
+    <button onclick="sendRawUpload()">Send POST</button>
+    <div class="note" id="raw-note"></div>
+  </div>
+  <div class="card">
+    <span class="method post">POST multipart/form-data</span>
+    <h3>File upload</h3>
+    <p><span class="code">POST /upload</span></p>
+    <input id="file-input" type="file">
+    <button onclick="sendMultipart()">Upload file</button>
+    <div class="note" id="file-note"></div>
+  </div>
+  <div class="card">
+    <span class="method get">CHECK</span>
+    <h3>Uploaded files</h3>
+    <p>Open the upload directory with autoindex enabled.</p>
+    <a class="button secondary" href="/uploads/" target="_blank">Open /uploads/</a>
+  </div>
+</div>
+
+</main>
+<footer><div class="wrap">webserv · École 42 · responses are printed by the server in the terminal</div></footer>
+<script src="/assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GET tests — webserv</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<header><div class="wrap">
+<h1>webserv tester</h1>
+<p>42 · HTTP/1.1 · browser demonstration</p>
+<nav>
+<a href="/">Home</a>
+<a href="/get.html">GET</a>
+<a href="/post.html">POST</a>
+<a href="/delete.html">DELETE</a>
+<a href="/cgi.html">CGI</a>
+<a href="/errors.html">Errors</a>
+</nav></div></header>
+<main>
+<section class="intro">
+<h2>GET tests</h2>
+<p>These are normal browser navigations. Use the browser for the page, and the terminal to inspect the complete HTTP response.</p>
+</section>
+
+<div class="card links">
+  <a href="/" target="_blank"><span>Home page</span><small>GET / → 200</small></a>
+  <a href="/images/readme.txt" target="_blank"><span>Static text file</span><small>GET /images/readme.txt → 200</small></a>
+  <a href="/images/" target="_blank"><span>Autoindex</span><small>GET /images/ → 200</small></a>
+  <a href="/missing-page" target="_blank"><span>Missing resource</span><small>GET /missing-page → 404</small></a>
+  <a href="/old" target="_blank"><span>Permanent redirect</span><small>GET /old → 301 → /new.html</small></a>
+  <a href="/temp" target="_blank"><span>Temporary redirect</span><small>GET /temp → 307 → /maintenance.html</small></a>
+</div>
+
+</main>
+<footer><div class="wrap">webserv · École 42 · responses are printed by the server in the terminal</div></footer>
+<script src="/assets/app.js"></script>
+</body>
+</html>

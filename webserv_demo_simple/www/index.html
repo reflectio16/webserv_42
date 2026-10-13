@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browser tests — webserv</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<header><div class="wrap">
+<h1>webserv tester</h1>
+<p>42 · HTTP/1.1 · browser demonstration</p>
+<nav>
+<a href="/">Home</a>
+<a href="/get.html">GET</a>
+<a href="/post.html">POST</a>
+<a href="/delete.html">DELETE</a>
+<a href="/cgi.html">CGI</a>
+<a href="/errors.html">Errors</a>
+</nav></div></header>
+<main>
+<section class="intro">
+<h2>Browser tests</h2>
+<p>A deliberately simple interface. Click a test in the browser, then watch the full HTTP response appear in the terminal where webserv is running.</p>
+</section>
+
+<div class="grid">
+  <div class="card"><span class="method get">GET</span><h3>GET requests</h3><p>Static files, index, autoindex and redirects.</p><a class="button" href="/get.html">Open GET tests</a></div>
+  <div class="card"><span class="method post">POST</span><h3>POST requests</h3><p>Raw body and multipart file uploads.</p><a class="button" href="/post.html">Open POST tests</a></div>
+  <div class="card"><span class="method delete">DELETE</span><h3>DELETE requests</h3><p>Create a file, then remove it with DELETE.</p><a class="button" href="/delete.html">Open DELETE tests</a></div>
+  <div class="card"><span class="method get">CGI</span><h3>CGI requests</h3><p>Python CGI with query string, stdin and timeout.</p><a class="button" href="/cgi.html">Open CGI tests</a></div>
+  <div class="card"><span class="method status">STATUS</span><h3>Error responses</h3><p>403, 404, 405, 413, 501 and 504.</p><a class="button" href="/errors.html">Open error tests</a></div>
+  <div class="card"><span class="method get">HOST</span><h3>Virtual host</h3><p>Open the second server block through <span class="code">Host: test.com</span>.</p><a class="button secondary" href="http://test.com:8080/" target="_blank">Open test.com</a></div>
+</div>
+
+</main>
+<footer><div class="wrap">webserv · École 42 · responses are printed by the server in the terminal</div></footer>
+<script src="/assets/app.js"></script>
+</body>
+</html>

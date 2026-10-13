@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CGI tests — webserv</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<header><div class="wrap">
+<h1>webserv tester</h1>
+<p>42 · HTTP/1.1 · browser demonstration</p>
+<nav>
+<a href="/">Home</a>
+<a href="/get.html">GET</a>
+<a href="/post.html">POST</a>
+<a href="/delete.html">DELETE</a>
+<a href="/cgi.html">CGI</a>
+<a href="/errors.html">Errors</a>
+</nav></div></header>
+<main>
+<section class="intro">
+<h2>CGI tests</h2>
+<p>Python scripts are executed through your CGI implementation. The complete generated HTTP response should be visible in the webserv terminal.</p>
+</section>
+
+<div class="grid">
+  <div class="card">
+    <span class="method get">GET CGI</span>
+    <h3>Query string</h3>
+    <label for="cgi-query">Query</label>
+    <input id="cgi-query" value="name=Evaluator&project=webserv">
+    <button onclick="cgiGet()">Run hello.py</button>
+    <div class="note" id="cgi-get-note"></div>
+  </div>
+  <div class="card">
+    <span class="method post">POST CGI</span>
+    <h3>stdin + environment</h3>
+    <label for="cgi-body">Body</label>
+    <textarea id="cgi-body">hello from CGI POST</textarea>
+    <button onclick="cgiPost()">Run env.py</button>
+    <div class="note" id="cgi-post-note"></div>
+  </div>
+  <div class="card">
+    <span class="method status">TIMEOUT</span>
+    <h3>Slow CGI</h3>
+    <p>Runs <span class="code">slow.py</span>. Your server should eventually answer 504.</p>
+    <button onclick="trigger504()">Run slow.py</button>
+  </div>
+</div>
+
+</main>
+<footer><div class="wrap">webserv · École 42 · responses are printed by the server in the terminal</div></footer>
+<script src="/assets/app.js"></script>
+</body>
+</html>

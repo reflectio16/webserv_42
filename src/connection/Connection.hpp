@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: meelma <meelma@student.42.fr>              +#+  +:+       +#+        */
+/*   By: fmoulin <fmoulin@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/25 17:13:30 by meelma            #+#    #+#             */
-/*   Updated: 2026/09/29 15:38:09 by meelma           ###   ########.fr       */
+/*   Updated: 2026/10/13 13:06:47 by fmoulin          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 
 #include <string>
 #include <cstddef>
+#include <iostream>
 #include <sys/types.h>          // pid_t
 #include "RequestParser.hpp"    // parser is a by-value member -> needs full type
 

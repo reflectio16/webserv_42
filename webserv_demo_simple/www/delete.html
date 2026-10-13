@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DELETE tests — webserv</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<header><div class="wrap">
+<h1>webserv tester</h1>
+<p>42 · HTTP/1.1 · browser demonstration</p>
+<nav>
+<a href="/">Home</a>
+<a href="/get.html">GET</a>
+<a href="/post.html">POST</a>
+<a href="/delete.html">DELETE</a>
+<a href="/cgi.html">CGI</a>
+<a href="/errors.html">Errors</a>
+</nav></div></header>
+<main>
+<section class="intro">
+<h2>DELETE tests</h2>
+<p>HTML forms cannot send DELETE natively, so these buttons use a tiny fetch() call. Nothing from the response is displayed here: read it in the terminal.</p>
+</section>
+
+<div class="grid">
+  <div class="card">
+    <span class="method post">STEP 1 · POST</span>
+    <h3>Create the test file</h3>
+    <p>Creates <span class="code">/tmp/webserv-demo-simple/uploads/delete-me.txt</span>.</p>
+    <button onclick="createDeleteFile()">Create delete-me.txt</button>
+  </div>
+  <div class="card">
+    <span class="method delete">STEP 2 · DELETE</span>
+    <h3>Delete the test file</h3>
+    <p><span class="code">DELETE /uploads/delete-me.txt</span></p>
+    <button class="danger" onclick="deleteFile()">Delete file</button>
+  </div>
+</div>
+<div class="note" id="delete-note"></div>
+
+</main>
+<footer><div class="wrap">webserv · École 42 · responses are printed by the server in the terminal</div></footer>
+<script src="/assets/app.js"></script>
+</body>
+</html>
